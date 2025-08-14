@@ -1,0 +1,340 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 테마 시스템 ===== */
+:root {
+  /* 기본 라이트 모드 색상 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-quaternary: #e2e8f0;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
+  --text-quaternary: #94a3b8;
+  
+  --border-primary: #e2e8f0;
+  --border-secondary: #cbd5e1;
+  --border-tertiary: #94a3b8;
+  
+  --surface-primary: rgba(255, 255, 255, 0.95);
+  --surface-secondary: rgba(248, 250, 252, 0.9);
+  --surface-tertiary: rgba(241, 245, 249, 0.85);
+  
+  --input-bg: rgba(255, 255, 255, 0.95);
+  --input-border: #cbd5e1;
+  --input-focus: #3b82f6;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  
+  --success: #059669;
+  --warning: #d97706;
+  --error: #dc2626;
+  --info: #2563eb;
+  
+  /* 추가 색상 변수 */
+  --accent-primary: #8b5cf6;
+  --accent-secondary: #a855f7;
+  --accent-tertiary: #c084fc;
+  --accent-primary-alpha: rgba(139, 92, 246, 0.1);
+  --accent-secondary-alpha: rgba(168, 85, 247, 0.1);
+  --accent-tertiary-alpha: rgba(192, 132, 252, 0.1);
+  
+  /* RGB 값들 */
+  --accent-primary-rgb: 139, 92, 246;
+  --accent-secondary-rgb: 168, 85, 247;
+  --accent-tertiary-rgb: 192, 132, 252;
+  
+  --accent-success: #059669;
+  --accent-success-bg: rgba(5, 150, 105, 0.1);
+  --accent-warning: #d97706;
+  --accent-warning-bg: rgba(217, 119, 6, 0.1);
+  --accent-orange: #ea580c;
+  --accent-orange-bg: rgba(234, 88, 12, 0.1);
+  --accent-danger: #dc2626;
+  --accent-danger-bg: rgba(220, 38, 38, 0.1);
+  
+  --text-on-accent: #ffffff;
+  --border-primary-alpha: rgba(226, 232, 240, 0.5);
+  --surface-primary-alpha: rgba(255, 255, 255, 0.9);
+  --overlay: rgba(0, 0, 0, 0.5);
+  
+  --gradient-primary: linear-gradient(135deg, var(--info), var(--success));
+  --gradient-secondary: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  --gradient-tertiary: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+  --gradient-text-primary: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  --gradient-warm: linear-gradient(135deg, var(--warning), var(--error));
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-quaternary: #475569;
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #cbd5e1;
+  --text-quaternary: #94a3b8;
+  
+  --border-primary: #334155;
+  --border-secondary: #475569;
+  --border-tertiary: #64748b;
+  
+  --surface-primary: rgba(30, 41, 59, 0.95);
+  --surface-secondary: rgba(51, 65, 85, 0.9);
+  --surface-tertiary: rgba(71, 85, 105, 0.85);
+  
+  --input-bg: rgba(51, 65, 85, 0.9);
+  --input-border: #475569;
+  --input-focus: #60a5fa;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6);
+  
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+  
+  /* 다크모드 전용 색상 */
+  --accent-primary: #a855f7;
+  --accent-secondary: #c084fc;
+  --accent-tertiary: #d8b4fe;
+  --accent-primary-alpha: rgba(168, 85, 247, 0.15);
+  --accent-secondary-alpha: rgba(192, 132, 252, 0.15);
+  --accent-tertiary-alpha: rgba(216, 180, 254, 0.15);
+  
+  /* RGB 값들 (다크 모드) */
+  --accent-primary-rgb: 168, 85, 247;
+  --accent-secondary-rgb: 192, 132, 252;
+  --accent-tertiary-rgb: 216, 180, 254;
+  
+  --accent-success: #10b981;
+  --accent-success-bg: rgba(16, 185, 129, 0.15);
+  --accent-warning: #f59e0b;
+  --accent-warning-bg: rgba(245, 158, 11, 0.15);
+  --accent-orange: #fb923c;
+  --accent-orange-bg: rgba(251, 146, 60, 0.15);
+  --accent-danger: #ef4444;
+  --accent-danger-bg: rgba(239, 68, 68, 0.15);
+  
+  --text-on-accent: #ffffff;
+  --border-primary-alpha: rgba(51, 65, 85, 0.5);
+  --surface-primary-alpha: rgba(30, 41, 59, 0.9);
+  --overlay: rgba(0, 0, 0, 0.7);
+  
+  --gradient-primary: linear-gradient(135deg, var(--info), var(--success));
+  --gradient-secondary: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  --gradient-tertiary: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+  --gradient-text-primary: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  --gradient-warm: linear-gradient(135deg, var(--warning), var(--error));
+}
+
+/* ===== 기본 스타일 ===== */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  line-height: 1.6;
+}
+
+/* ===== 스크롤바 스타일링 ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-tertiary);
+}
+
+/* ===== 포커스 스타일 ===== */
+*:focus {
+  outline: 2px solid var(--input-focus);
+  outline-offset: 2px;
+}
+
+/* ===== 선택 텍스트 스타일 ===== */
+::selection {
+  background-color: var(--info);
+  color: white;
+}
+
+/* ===== 애니메이션 ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ===== 유틸리티 클래스 ===== */
+.theme-transition {
+  transition: all 0.3s ease;
+}
+
+/* 그라데이션 텍스트 렌더링 개선 */
+.text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  /* 렌더링 개선 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* 서브픽셀 렌더링 강제 */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Safari에서 그라데이션 텍스트 블러 문제 해결 */
+@supports (-webkit-background-clip: text) {
+  .gradient-text-fix {
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+}
+
+.glass-effect {
+  background: var(--surface-primary);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-primary);
+}
+
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ===== 테마 전환 애니메이션 ===== */
+.theme-transition * {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease, 
+              border-color 0.3s ease, 
+              box-shadow 0.3s ease;
+}
+
+/* ===== 커스텀 스크롤바 ===== */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-tertiary) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border-tertiary);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-quaternary);
+}
+
+/* ===== 접근성 개선 ===== */
+/* ===== 랜딩페이지 애니메이션 ===== */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
