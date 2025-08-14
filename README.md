@@ -40,17 +40,7 @@
    `.env.local`에 다음 환경 변수들을 추가하세요:
    ```env
    # 데이터베이스
-   DATABASE_URL=your_database_connection_string
-   
-   # 인증
-   NEXTAUTH_SECRET=your_nextauth_secret
-   NEXTAUTH_URL=http://localhost:3000
-   
-   # 외부 API (필요한 경우)
-   OPENAI_API_KEY=your_openai_api_key
-   
-   # 기타 서비스
-   REDIS_URL=your_redis_url
+   NEXT_PUBLIC_API_BASE_UR=your_database_connection_string
    ```
 
 4. **개발 서버 실행**
