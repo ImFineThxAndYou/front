@@ -5,6 +5,7 @@ import { useAuthStore } from '../../../lib/stores/auth';
 import { useUIStore } from '../../../lib/stores/ui';
 import { sseManager } from '../../../lib/services/sseManager';
 import { useChat } from '../../../lib/hooks/useChat';
+import { logger } from '../../../lib/utils/logger';
 import DesktopNav from './DesktopNav';
 import MobileNav from './MobileNav';
 import TopBar from './TopBar';

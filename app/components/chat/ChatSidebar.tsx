@@ -2,61 +2,52 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useChat } from '../../../lib/hooks/useChat';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
 import ChatRoomItem from './ChatRoomItem';
 import ChatRequestList from './ChatRequestList';
+import { ChatRoomSummaryResponse } from '../../../lib/types/chat';
 import { chatService } from '../../../lib/services/chatService';
-import { ChatRequestSummary } from '../../../lib/types/chatRequest';
+
+type ViewMode = 'rooms' | 'requests';
 
 interface ChatSidebarProps {
-  selectedRoomId: string | null;
-  onRoomSelect: (roomId: string) => void;
+  rooms: ChatRoomSummaryResponse[];
+  selectedRoom: ChatRoomSummaryResponse | null;
+  viewMode: ViewMode;
+  onRoomSelect: (room: ChatRoomSummaryResponse) => void;
+  onViewModeChange: (mode: ViewMode) => void;
+  onRequestUpdate: () => void;
+  loading: boolean;
 }
 
-export default function ChatSidebar({ selectedRoomId, onRoomSelect }: ChatSidebarProps) {
+export default function ChatSidebar({ 
+  rooms, 
+  selectedRoom, 
+  viewMode, 
+  onRoomSelect, 
+  onViewModeChange,
+  onRequestUpdate,
+  loading 
+}: ChatSidebarProps) {
   const { t } = useTranslation('chat');
-  const {
-    isConnected,
-    isConnecting
-  } = useChat();
-
-  const [activeTab, setActiveTab] = useState<'chats' | 'requests'>('chats');
-  const [receivedRequests, setReceivedRequests] = useState<ChatRequestSummary[]>([]);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
-  // API에서 채팅방 목록 가져오기
-  const { chatRooms, isLoading: isLoadingRooms } = useChat();
-
-  // 받은 채팅 요청 목록 로드
+  // 받은 채팅 요청 개수 로드
   useEffect(() => {
-    if (activeTab === 'requests') {
-      loadReceivedRequests();
-    }
-  }, [activeTab]);
+    const loadPendingCount = async () => {
+      try {
+        const requests = await chatService.getMyReceivedChatRequests();
+        const pendingCount = requests.filter(req => req.roomStatus === 'PENDING').length;
+        setPendingRequestCount(pendingCount);
+      } catch (error) {
+        console.error('받은 채팅 요청 로드 실패:', error);
+      }
+    };
 
-  const loadReceivedRequests = async () => {
-    try {
-      const requests = await chatService.getMyReceivedChatRequests();
-      setReceivedRequests(requests);
-      // PENDING 상태인 요청 개수 계산
-      const pendingCount = requests.filter(req => req.roomStatus === 'PENDING').length;
-      setPendingRequestCount(pendingCount);
-    } catch (error) {
-      console.error('받은 채팅 요청 로드 실패:', error);
-    }
-  };
+    loadPendingCount();
+  }, []);
 
-  // 채팅 요청 업데이트 후 처리
-  const handleRequestUpdate = async () => {
-    await loadReceivedRequests();
-    // 채팅방 목록도 새로고침
-    await loadChatRooms();
-    // 채팅 탭으로 전환
-    setActiveTab('chats');
-  };
-
-  if (isLoadingRooms) {
+  if (loading) {
     return (
       <div className="h-full flex flex-col">
         {/* Header Skeleton */}
@@ -145,47 +136,47 @@ export default function ChatSidebar({ selectedRoomId, onRoomSelect }: ChatSideba
             }}
           >
             <button
-              onClick={() => setActiveTab('chats')}
+              onClick={() => onViewModeChange('rooms')}
               className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${
-                activeTab === 'chats'
+                viewMode === 'rooms'
                   ? 'text-white shadow-lg transform scale-105'
                   : ''
               } whitespace-nowrap cursor-pointer`}
               style={{
-                backgroundColor: activeTab === 'chats' 
+                backgroundColor: viewMode === 'rooms' 
                   ? 'transparent' 
                   : 'transparent',
-                color: activeTab === 'chats' 
+                color: viewMode === 'rooms' 
                   ? '#ffffff' 
                   : 'var(--text-secondary)'
               }}
             >
-              {activeTab === 'chats' && (
+              {viewMode === 'rooms' && (
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl" />
               )}
               <span className="relative z-10 flex items-center justify-center">
                 <i className="ri-chat-3-line mr-2"></i>
-                {t('chatList')}
+                채팅
               </span>
             </button>
             
             <button
-              onClick={() => setActiveTab('requests')}
+              onClick={() => onViewModeChange('requests')}
               className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${
-                activeTab === 'requests'
+                viewMode === 'requests'
                   ? 'text-white shadow-lg transform scale-105'
                   : ''
               } whitespace-nowrap cursor-pointer`}
               style={{
-                backgroundColor: activeTab === 'requests' 
+                backgroundColor: viewMode === 'requests' 
                   ? 'transparent' 
                   : 'transparent',
-                color: activeTab === 'requests' 
+                color: viewMode === 'requests' 
                   ? '#ffffff' 
                   : 'var(--text-secondary)'
               }}
             >
-              {activeTab === 'requests' && (
+              {viewMode === 'requests' && (
                 <div 
                   className="absolute inset-0 rounded-xl"
                   style={{ background: 'var(--gradient-secondary)' }}
@@ -193,7 +184,7 @@ export default function ChatSidebar({ selectedRoomId, onRoomSelect }: ChatSideba
               )}
               <span className="relative z-10 flex items-center justify-center">
                 <i className="ri-user-add-line mr-2"></i>
-                {t('newRequests')}
+                요청
                 {pendingRequestCount > 0 && (
                   <span 
                     className="ml-2 w-5 h-5 text-xs rounded-full flex items-center justify-center animate-pulse"
@@ -213,9 +204,9 @@ export default function ChatSidebar({ selectedRoomId, onRoomSelect }: ChatSideba
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {activeTab === 'chats' ? (
+        {viewMode === 'rooms' && (
           <div className="p-2">
-            {chatRooms.length === 0 ? (
+            {rooms.length === 0 ? (
               <div 
                 className="p-8 text-center rounded-2xl m-4 border"
                 style={{
@@ -231,28 +222,25 @@ export default function ChatSidebar({ selectedRoomId, onRoomSelect }: ChatSideba
                   <i className="ri-chat-3-line text-2xl"></i>
                 </div>
                 <p className="text-sm font-medium mb-2">채팅방이 없습니다</p>
-                <p className="text-xs">백엔드 API에서 데이터를 불러오는 중입니다</p>
+                <p className="text-xs">새로운 대화를 시작해보세요</p>
               </div>
             ) : (
               <div className="space-y-1">
-                {chatRooms.map((room) => (
+                {rooms.map((room) => (
                   <ChatRoomItem
                     key={room.chatRoomId}
                     room={room}
-                    isActive={selectedRoomId === room.chatRoomId}
-                    onClick={() => onRoomSelect(room.chatRoomId)}
+                    isActive={selectedRoom?.chatRoomId === room.chatRoomId}
+                    onClick={() => onRoomSelect(room)}
                   />
                 ))}
               </div>
             )}
           </div>
-        ) : (
+        )}
+        {viewMode === 'requests' && (
           <div className="p-2">
-            <ChatRequestList 
-              type="received" 
-              onRequestUpdate={handleRequestUpdate}
-              onRoomSelect={onRoomSelect}
-            />
+            <ChatRequestList onRequestUpdate={onRequestUpdate} />
           </div>
         )}
       </div>
@@ -271,7 +259,7 @@ export default function ChatSidebar({ selectedRoomId, onRoomSelect }: ChatSideba
         >
           <div className="flex items-center">
             <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-            <span>활성 채팅 {chatRooms.length}개</span>
+            <span>활성 채팅 {rooms.length}개</span>
           </div>
           <div className="flex items-center">
             <i className="ri-notification-line mr-1"></i>

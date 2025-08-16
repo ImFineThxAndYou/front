@@ -1,12 +1,12 @@
 
 'use client';
 
-import { ChatRoomSummary } from '../../../lib/types/chat';
-import { useTranslation } from '@/lib/hooks/useTranslation';
+import { ChatRoomSummaryResponse } from '../../../lib/types/chat';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
 import { formatSimpleTime } from '../../../lib/utils/dateUtils';
 
 interface ChatRoomItemProps {
-  room: ChatRoomSummary;
+  room: ChatRoomSummaryResponse;
   isActive: boolean;
   onClick: () => void;
 }

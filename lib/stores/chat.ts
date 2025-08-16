@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { websocketManager } from '../services/websocketManager';
 import { chatService } from '../services/chatService';
-import { ChatMessage, ChatRoom, ChatRoomSummary } from '../types/chat';
+import { ChatMessage, ChatRoom, ChatRoomSummaryResponse } from '../types/chat';
 import { getCurrentInstant } from '../utils/dateUtils';
 import { useAuthStore } from './auth';
 
@@ -14,7 +14,7 @@ interface ChatState {
   
   // 채팅방 상태
   currentChatRoom: string | null;
-  chatRooms: ChatRoomSummary[];
+  chatRooms: ChatRoomSummaryResponse[];
   chatMessages: Map<string, ChatMessage[]>;
   
   // 메시지 상태
@@ -28,40 +28,103 @@ interface ChatState {
   leaveChatRoom: (chatRoomId: string) => void;
   sendMessage: (chatRoomId: string, content: string) => Promise<void>;
   addMessage: (chatRoomId: string, message: ChatMessage) => void;
+  loadMessages: (chatRoomId: string, messages: ChatMessage[]) => void;
   markAsRead: (chatRoomId: string) => void;
-  setChatRooms: (chatRooms: ChatRoomSummary[]) => void;
+  setChatRooms: (chatRooms: ChatRoomSummaryResponse[]) => void;
   setUnreadCount: (chatRoomId: string, count: number) => void;
   clearConnectionError: () => void;
   loadChatRooms: () => Promise<void>;
 }
 
-export const useChatStore = create<ChatState>((set, get) => ({
-  // 초기 상태
-  isConnected: false,
-  isConnecting: false,
-  connectionError: null,
-  isLoading: false,
-  currentChatRoom: null,
-  chatRooms: [],
-  chatMessages: new Map(),
-  unreadCounts: new Map(),
+export const useChatStore = create<ChatState>((set, get) => {
+  // 웹소켓 매니저 연결 상태 콜백 설정
+  websocketManager.setConnectionStateCallback((connected: boolean, error?: string) => {
+    set({ 
+      isConnected: connected, 
+      isConnecting: false,
+      connectionError: error || null 
+    });
+  });
+
+  return {
+    // 초기 상태
+    isConnected: false,
+    isConnecting: false,
+    connectionError: null,
+    isLoading: false,
+    currentChatRoom: null,
+    chatRooms: [],
+    chatMessages: new Map(),
+    unreadCounts: new Map(),
 
   // WebSocket 연결
   connectWebSocket: async () => {
+    console.log('🚀 chatStore.connectWebSocket() 호출됨');
     const state = get();
+    console.log('🔍 현재 chatStore 상태:', {
+      isConnected: state.isConnected,
+      isConnecting: state.isConnecting,
+      connectionError: state.connectionError
+    });
+    
     if (state.isConnected || state.isConnecting) {
+      console.log('🔍 이미 연결 중이거나 연결됨');
       return;
     }
 
+    console.log('📝 연결 상태를 isConnecting=true로 설정');
     set({ isConnecting: true, connectionError: null });
 
     try {
+      // 실제 WebSocket 연결 시도
+      console.log('🔗 WebSocket 연결 시도...');
       await websocketManager.connect();
-      set({ 
-        isConnected: true, 
-        isConnecting: false,
-        connectionError: null 
+      
+      // WebSocket 메시지 수신 핸들러 등록
+      console.log('🔔 WebSocket 메시지 핸들러 등록...');
+      websocketManager.onMessageReceived((message) => {
+        console.log('🔔 WebSocket 메시지 수신됨:', message);
+        const state = get();
+        const currentUser = useAuthStore.getState().user;
+        
+        // 현재 채팅방의 메시지인지 확인
+        if (state.currentChatRoom === message.chatRoomUuid) {
+          // 내가 보낸 메시지인지 확인 (중복 방지)
+          const isMyMessage = currentUser && (
+            message.senderName === currentUser.nickname ||
+            message.senderName === currentUser.membername
+          );
+          
+          if (isMyMessage) {
+            console.log('📨 내가 보낸 메시지 WebSocket 수신 - 무시됨 (중복 방지):', {
+              senderName: message.senderName,
+              currentUserNickname: currentUser.nickname,
+              currentUserMembername: currentUser.membername
+            });
+            return;
+          }
+          
+          console.log('📨 다른 사용자 메시지 - addMessage 호출');
+          get().addMessage(message.chatRoomUuid, {
+            id: message.id,
+            chatRoomUuid: message.chatRoomUuid,
+            sender: message.senderName,
+            senderId: message.senderId || '',
+            senderName: message.senderName,
+            content: message.content,
+            messageTime: message.messageTime,
+            chatMessageStatus: message.status as 'read' | 'UNREAD'
+          });
+        } else {
+          console.log('📨 다른 채팅방 메시지 - 무시됨:', {
+            currentRoom: state.currentChatRoom,
+            messageRoom: message.chatRoomUuid
+          });
+        }
       });
+      
+      // 연결 상태는 websocketManager의 콜백으로 관리됨
+      console.log('🔗 WebSocket 연결 성공');
     } catch (error) {
       console.error('❌ WebSocket 연결 실패:', error);
       set({ 
@@ -74,14 +137,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   // WebSocket 연결 해제
   disconnectWebSocket: () => {
+    const state = get();
+    
+    // WebSocket 연결 해제 (채팅방 구독은 자동으로 해제됨)
     websocketManager.disconnect();
+    
     set({ 
       isConnected: false, 
       isConnecting: false,
       currentChatRoom: null,
-      chatMessages: new Map(),
-      unreadCounts: new Map()
+      connectionError: null 
     });
+    
+    console.log('🔌 WebSocket 연결 해제 완료');
   },
 
   // 현재 채팅방 설정
@@ -90,16 +158,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     
     // 이전 채팅방에서 나가기
     if (state.currentChatRoom) {
-      websocketManager.unsubscribe(state.currentChatRoom);
+      websocketManager.leaveChatRoom();
     }
     
-    // 새 채팅방 입장
-    if (chatRoomId) {
-      websocketManager.subscribe(chatRoomId, (message: ChatMessage) => {
-        get().addMessage(chatRoomId, message);
-      });
-    }
-    
+    // 새 채팅방은 enterChatRoom에서 자동으로 구독됨
     set({ currentChatRoom: chatRoomId });
   },
 
@@ -107,27 +169,48 @@ export const useChatStore = create<ChatState>((set, get) => ({
   joinChatRoom: async (chatRoomId: string) => {
     const state = get();
     
-    if (!state.isConnected) {
-      set({ connectionError: 'WebSocket이 연결되지 않았습니다.' });
+    // 이미 해당 채팅방에 있는 경우 중복 입장 방지
+    if (state.currentChatRoom === chatRoomId) {
+      console.log('🔍 이미 해당 채팅방에 있음:', chatRoomId);
       return;
     }
 
+    // 이전 채팅방에서 나가기
+    if (state.currentChatRoom) {
+      console.log('🚪 이전 채팅방 나가기:', state.currentChatRoom);
+      websocketManager.leaveChatRoom();
+    }
+
+    // 즉시 currentChatRoom 설정 (UI 반응성 향상)
+    set({ 
+      currentChatRoom: chatRoomId,
+      isConnecting: true, 
+      connectionError: null 
+    });
+    
+    console.log('🔍 currentChatRoom 즉시 설정됨:', chatRoomId);
+    
     try {
-      // 현재 사용자 정보 가져오기
-      const authState = useAuthStore.getState();
-      const currentUser = authState.user;
-      const membername = currentUser?.membername || 'unknown';
+      // 채팅방 입장 이벤트 전송 (웹소켓 연결 포함)
+      await websocketManager.enterChatRoom(chatRoomId);
       
-      // 채팅방 입장 이벤트 전송
-      websocketManager.enterChatRoom(membername, chatRoomId);
-      
-      // 현재 채팅방 설정
-      get().setCurrentChatRoom(chatRoomId);
+      // 연결 상태 업데이트
+      set({ 
+        isConnected: true, 
+        isConnecting: false,
+        connectionError: null 
+      });
       
       console.log('✅ 채팅방 입장 성공:', chatRoomId);
     } catch (error) {
       console.error('❌ 채팅방 입장 실패:', error);
-      set({ connectionError: '채팅방 입장에 실패했습니다.' });
+      set({ 
+        currentChatRoom: null, // 실패 시 null로 복원
+        isConnected: false,
+        isConnecting: false,
+        connectionError: '채팅방 입장에 실패했습니다.' 
+      });
+      throw error; // 에러를 다시 던져서 호출자가 처리할 수 있도록
     }
   },
 
@@ -136,11 +219,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const state = get();
     
     // 구독 해제
-    websocketManager.unsubscribe(chatRoomId);
+    websocketManager.leaveChatRoom();
     
     // 현재 채팅방이면 null로 설정
     if (state.currentChatRoom === chatRoomId) {
-      set({ currentChatRoom: null });
+      set({ 
+        currentChatRoom: null,
+        isConnected: false 
+      });
     }
     
     console.log('🚪 채팅방 나가기:', chatRoomId);
@@ -166,18 +252,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const senderName = currentUser?.nickname || currentUser?.membername || 'Unknown User';
       
       // WebSocket으로 메시지 전송
-      websocketManager.sendMessage(chatRoomId, content, senderName);
+      websocketManager.sendMessage(chatRoomId, content);
       
       // 낙관적 업데이트 (즉시 UI에 반영)
       const optimisticMessage: ChatMessage = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random()}`, // 더 고유한 임시 ID
         chatRoomUuid: chatRoomId,
         sender: senderName,
+        senderId: currentUser?.id?.toString() || '',
+        senderName: senderName,
         content: content,
         messageTime: getCurrentInstant(),
         chatMessageStatus: 'UNREAD'
       };
       
+      console.log('📤 낙관적 업데이트 메시지:', optimisticMessage);
       get().addMessage(chatRoomId, optimisticMessage);
       
     } catch (error) {
@@ -188,11 +277,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   // 메시지 추가
   addMessage: (chatRoomId: string, message: ChatMessage) => {
+    console.log('🔍 addMessage 호출됨:', { chatRoomId, messageId: message.id, content: message.content });
+    
+    // 메시지 데이터 검증
+    if (!message.id) {
+      console.error('❌ 메시지 ID가 없음:', message);
+      return;
+    }
+    
     const state = get();
     const currentMessages = state.chatMessages.get(chatRoomId) || [];
+    console.log('🔍 현재 메시지 개수:', currentMessages.length);
     
     // 중복 메시지 방지
     if (currentMessages.some(m => m.id === message.id)) {
+      console.log('⚠️ 중복 메시지 감지 - 추가하지 않음:', message.id);
       return;
     }
     
@@ -200,7 +299,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const updatedChatMessages = new Map(state.chatMessages);
     updatedChatMessages.set(chatRoomId, updatedMessages);
     
+    console.log('📝 스토어 업데이트 전 메시지 개수:', currentMessages.length);
+    console.log('📝 스토어 업데이트 후 메시지 개수:', updatedMessages.length);
     set({ chatMessages: updatedChatMessages });
+    
+    console.log('✅ addMessage 완료, 새로운 메시지 추가됨');
+    
+    // 스토어 상태 재확인
+    setTimeout(() => {
+      const newState = get();
+      const newMessages = newState.chatMessages.get(chatRoomId) || [];
+      console.log('🔍 addMessage 후 스토어 확인:', { 
+        roomId: chatRoomId,
+        messageCount: newMessages.length,
+        lastMessage: newMessages[newMessages.length - 1]?.content 
+      });
+    }, 100);
     
     // 읽지 않은 메시지 개수 업데이트
     if (message.chatMessageStatus === 'UNREAD' && message.sender !== 'currentUser') {
@@ -209,6 +323,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
       updatedUnreadCounts.set(chatRoomId, currentCount + 1);
       set({ unreadCounts: updatedUnreadCounts });
     }
+  },
+
+  // 여러 메시지 로드 (이전 메시지 기록)
+  loadMessages: (chatRoomId: string, messages: ChatMessage[]) => {
+    console.log('🔍 loadMessages 호출됨:', { chatRoomId, messageCount: messages.length });
+    const state = get();
+    console.log('🔍 현재 스토어 상태:', { 
+      chatMessagesSize: state.chatMessages.size,
+      currentRoomMessages: state.chatMessages.get(chatRoomId)?.length || 0
+    });
+    
+    const updatedChatMessages = new Map(state.chatMessages);
+    
+    // 시간순으로 정렬 (오래된 순서대로)
+    const sortedMessages = messages.sort((a, b) => 
+      new Date(a.messageTime).getTime() - new Date(b.messageTime).getTime()
+    );
+    
+    console.log('🔄 정렬된 메시지들:', sortedMessages.map(m => ({ id: m.id, content: m.content, time: m.messageTime })));
+    
+    updatedChatMessages.set(chatRoomId, sortedMessages);
+    set({ chatMessages: updatedChatMessages });
+    
+    console.log(`📝 ${chatRoomId}에 ${messages.length}개 메시지 로드됨`);
+    console.log('🔍 스토어 업데이트 후:', { 
+      newSize: updatedChatMessages.size,
+      newRoomMessages: updatedChatMessages.get(chatRoomId)?.length || 0
+    });
   },
 
   // 메시지 읽음 표시
@@ -220,7 +362,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   // 채팅방 목록 설정
-  setChatRooms: (chatRooms: ChatRoomSummary[]) => {
+  setChatRooms: (chatRooms: ChatRoomSummaryResponse[]) => {
     set({ chatRooms });
   },
 
@@ -249,4 +391,5 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ chatRooms: [], isLoading: false });
     }
   }
-}));
+  };
+});
