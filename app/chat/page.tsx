@@ -10,6 +10,7 @@ import { ChatRoomSummaryResponse } from '../../lib/types/chat';
 import { chatService } from '../../lib/services/chatService';
 import { useAuthStore } from '../../lib/stores/auth';
 import { useChatStore } from '../../lib/stores/chat';
+import { useChat } from '../../lib/hooks/useChat';
 
 type ViewMode = 'rooms' | 'requests';
 
@@ -20,6 +21,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
   const { setCurrentChatRoom } = useChatStore();
+  const { connectWebSocket, isConnected, isConnecting } = useChat();
 
   // 채팅방 목록 로드
   const loadRooms = async () => {
@@ -34,9 +36,18 @@ export default function ChatPage() {
     }
   };
 
+  // 채팅 페이지 진입 시 WebSocket 연결 보장
   useEffect(() => {
+    const ensureWebSocketConnection = async () => {
+      if (user && !isConnected && !isConnecting) {
+        console.log('📡 ChatPage: WebSocket 연결 보장 시도');
+        await connectWebSocket();
+      }
+    };
+
+    ensureWebSocketConnection();
     loadRooms();
-  }, []);
+  }, [user, isConnected, isConnecting, connectWebSocket]);
 
   const handleRoomSelect = (room: ChatRoomSummaryResponse) => {
     console.log('🎯 ChatPage: 채팅방 선택됨:', room.chatRoomId);

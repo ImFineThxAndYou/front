@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '../../../lib/stores/auth';
 import { useUIStore } from '../../../lib/stores/ui';
 import { sseManager } from '../../../lib/services/sseManager';
@@ -22,6 +23,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { connectWebSocket, disconnectWebSocket } = useChat();
   const [isNavExpanded, setIsNavExpanded] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const pathname = usePathname();
 
   // 테마 변경 시 HTML data-theme 속성 업데이트
   useEffect(() => {
@@ -29,7 +31,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     document.documentElement.className = document.documentElement.className.replace(/theme-\w+/, '') + ` theme-${theme}`;
   }, [theme]);
 
-  // 인증 상태 확인 및 SSE 연결
+  // 인증 상태 확인 및 조건부 연결
   useEffect(() => {
     const verifyAuth = async () => {
       try {
@@ -37,14 +39,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
         const isAuth = await checkAuth();
         console.log('🔍 MainLayout: 인증 상태 확인 결과:', isAuth);
         
-        // 인증이 성공하고 사용자 정보가 있으면 SSE 연결 시도
+        // 인증이 성공하고 사용자 정보가 있으면 SSE 연결 (알림용)
         if (isAuth && user?.membername) {
           console.log('🔗 MainLayout: SSE 연결 시도:', user.membername);
           await sseManager.connect(user.membername);
           
-          // 채팅 WebSocket 연결 시도
-          console.log('🔗 MainLayout: 채팅 WebSocket 연결 시도');
-          await connectWebSocket();
+          // 채팅 페이지에서만 WebSocket 연결
+          const needsWebSocket = pathname?.startsWith('/chat');
+          if (needsWebSocket) {
+            console.log('🔗 MainLayout: 채팅 페이지 진입, WebSocket 연결 시도');
+            await connectWebSocket();
+          } else {
+            console.log('ℹ️ MainLayout: 채팅 페이지가 아님, WebSocket 연결 생략');
+          }
         }
       } catch (error) {
         console.error('❌ MainLayout: 인증 확인 실패:', error);
@@ -54,7 +61,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     };
 
     verifyAuth();
-  }, [checkAuth, user?.membername]);
+  }, [checkAuth, user?.membername, pathname]);
 
   // 컴포넌트 언마운트 시 연결 해제
   useEffect(() => {

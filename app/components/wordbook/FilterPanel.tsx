@@ -1,163 +1,251 @@
-
 'use client';
 
-import { useTranslation } from '../../../lib/hooks/useTranslation';
 import { useWordbookStore } from '../../../lib/stores/wordbook';
 
-const DIFFICULTY_LEVELS = [1, 2, 3, 4, 5];
-const PARTS_OF_SPEECH = ['noun', 'verb', 'adjective', 'adverb', 'preposition', 'conjunction', 'interjection'];
-
 export default function FilterPanel() {
-  const { t } = useTranslation(['wordbook']);
-  const { filters, setDifficultyFilter, setPartOfSpeechFilter } = useWordbookStore();
+  const { filters, setDifficultyFilter, setPartOfSpeechFilter, clearFilters } = useWordbookStore();
 
-  const handleDifficultyToggle = (level: number) => {
-    const newDifficulty = filters.difficulty.includes(level)
-      ? filters.difficulty.filter(d => d !== level)
-      : [...filters.difficulty, level];
-    setDifficultyFilter(newDifficulty);
+  const difficultyOptions = [
+    { value: 1, label: '매우 쉬움', color: 'var(--success)', count: 0 },
+    { value: 2, label: '쉬움', color: 'var(--info)', count: 0 },
+    { value: 3, label: '보통', color: 'var(--warning)', count: 0 },
+    { value: 4, label: '어려움', color: 'var(--danger)', count: 0 },
+    { value: 5, label: '매우 어려움', color: 'var(--danger)', count: 0 },
+  ];
+
+  const posOptions = [
+    { value: 'noun', label: '명사', icon: 'ri-bookmark-line' },
+    { value: 'verb', label: '동사', icon: 'ri-play-line' },
+    { value: 'adjective', label: '형용사', icon: 'ri-star-line' },
+    { value: 'adverb', label: '부사', icon: 'ri-speed-line' },
+    { value: 'preposition', label: '전치사', icon: 'ri-link' },
+    { value: 'conjunction', label: '접속사', icon: 'ri-shuffle-line' },
+  ];
+
+  const handleDifficultyChange = (difficulty: number) => {
+    const newDifficulties = filters.difficulty.includes(difficulty)
+      ? filters.difficulty.filter(d => d !== difficulty)
+      : [...filters.difficulty, difficulty];
+    setDifficultyFilter(newDifficulties);
   };
 
-  const handlePartOfSpeechToggle = (pos: string) => {
-    const newPartOfSpeech = filters.partOfSpeech.includes(pos)
+  const handlePosChange = (pos: string) => {
+    const newPos = filters.partOfSpeech.includes(pos)
       ? filters.partOfSpeech.filter(p => p !== pos)
       : [...filters.partOfSpeech, pos];
-    setPartOfSpeechFilter(newPartOfSpeech);
+    setPartOfSpeechFilter(newPos);
   };
 
-  const getDifficultyColor = (level: number, isActive: boolean) => {
-    const colors = {
-      1: isActive ? 'var(--accent-success)' : 'var(--accent-success-bg)',
-      2: isActive ? 'var(--accent-primary)' : 'var(--accent-primary-bg)',
-      3: isActive ? 'var(--accent-warning)' : 'var(--accent-warning-bg)',
-      4: isActive ? 'var(--accent-orange)' : 'var(--accent-orange-bg)',
-      5: isActive ? 'var(--accent-danger)' : 'var(--accent-danger-bg)',
-    };
-    return colors[level as keyof typeof colors] || '';
-  };
-
-  const getDifficultyTextColor = (level: number, isActive: boolean) => {
-    if (isActive) return 'var(--text-on-accent)';
-    
-    const colors = {
-      1: 'var(--accent-success)',
-      2: 'var(--accent-primary)',
-      3: 'var(--accent-warning)',
-      4: 'var(--accent-orange)',
-      5: 'var(--accent-danger)',
-    };
-    return colors[level as keyof typeof colors] || 'var(--text-secondary)';
-  };
-
-  const getDifficultyBorderColor = (level: number, isActive: boolean) => {
-    if (isActive) {
-      const colors = {
-        1: 'var(--accent-success)',
-        2: 'var(--accent-primary)',
-        3: 'var(--accent-warning)',
-        4: 'var(--accent-orange)',
-        5: 'var(--accent-danger)',
-      };
-      return colors[level as keyof typeof colors] || 'var(--border-primary)';
-    }
-    
-    const colors = {
-      1: 'var(--accent-success-alpha)',
-      2: 'var(--accent-primary-alpha)',
-      3: 'var(--accent-warning-alpha)',
-      4: 'var(--accent-orange-alpha)',
-      5: 'var(--accent-danger-alpha)',
-    };
-    return colors[level as keyof typeof colors] || 'var(--border-secondary)';
-  };
+  const hasActiveFilters = filters.difficulty.length > 0 || filters.partOfSpeech.length > 0;
 
   return (
-    <div className="p-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Difficulty Filter */}
-        <div>
-          <div className="flex items-center space-x-2 mb-3">
-            <i className="ri-star-fill w-4 h-4" style={{ color: 'var(--accent-warning)' }} />
-            <h3 
-              className="font-medium"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              난이도
-            </h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {DIFFICULTY_LEVELS.map(level => {
-              const isActive = filters.difficulty.includes(level);
-              return (
-                <button
-                  key={level}
-                  onClick={() => handleDifficultyToggle(level)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer border"
-                  style={{
-                    backgroundColor: isActive ? getDifficultyColor(level, true) : getDifficultyColor(level, false),
-                    color: getDifficultyTextColor(level, isActive),
-                    borderColor: getDifficultyBorderColor(level, isActive)
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'var(--surface-secondary)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = getDifficultyColor(level, false);
-                    }
-                  }}
-                >
-                  <div className="flex items-center space-x-1">
-                    <i className="ri-star-fill w-3 h-3" />
-                    <span>{level}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 
+          className="text-lg font-semibold"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          필터
+        </h3>
+        
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-sm font-medium hover:opacity-70 transition-opacity"
+            style={{ color: 'var(--primary)' }}
+          >
+            초기화
+          </button>
+        )}
+      </div>
 
-        {/* Part of Speech Filter */}
-        <div>
-          <div className="flex items-center space-x-2 mb-3">
-            <i className="ri-hash w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-            <h3 
-              className="font-medium"
+      {/* Difficulty Filter */}
+      <div>
+        <h4 
+          className="text-sm font-semibold mb-3"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          🎯 난이도
+        </h4>
+        
+        <div className="space-y-2">
+          {difficultyOptions.map((option) => (
+            <label
+              key={option.value}
+              className="flex items-center gap-3 p-3 rounded-xl hover:shadow-sm transition-all cursor-pointer"
+              style={{
+                backgroundColor: filters.difficulty.includes(option.value) 
+                  ? `${option.color}10` 
+                  : 'var(--surface-secondary)'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={filters.difficulty.includes(option.value)}
+                onChange={() => handleDifficultyChange(option.value)}
+                className="sr-only"
+              />
+              
+              <div 
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                  filters.difficulty.includes(option.value) ? 'shadow-sm' : ''
+                }`}
+                style={{
+                  borderColor: filters.difficulty.includes(option.value) ? option.color : 'var(--border-secondary)',
+                  backgroundColor: filters.difficulty.includes(option.value) ? option.color : 'transparent'
+                }}
+              >
+                {filters.difficulty.includes(option.value) && (
+                  <i className="ri-check-line text-xs text-white"></i>
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div 
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {option.label}
+                </div>
+                <div 
+                  className="text-xs"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  레벨 {option.value}
+                </div>
+              </div>
+              
+              <div 
+                className="text-xs px-2 py-1 rounded-full font-medium"
+                style={{
+                  backgroundColor: 'var(--surface-primary)',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                {option.count}
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Part of Speech Filter */}
+      <div>
+        <h4 
+          className="text-sm font-semibold mb-3"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          📝 품사
+        </h4>
+        
+        <div className="space-y-2">
+          {posOptions.map((option) => (
+            <label
+              key={option.value}
+              className="flex items-center gap-3 p-3 rounded-xl hover:shadow-sm transition-all cursor-pointer"
+              style={{
+                backgroundColor: filters.partOfSpeech.includes(option.value) 
+                  ? 'var(--primary)10' 
+                  : 'var(--surface-secondary)'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={filters.partOfSpeech.includes(option.value)}
+                onChange={() => handlePosChange(option.value)}
+                className="sr-only"
+              />
+              
+              <div 
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                  filters.partOfSpeech.includes(option.value) ? 'shadow-sm' : ''
+                }`}
+                style={{
+                  borderColor: filters.partOfSpeech.includes(option.value) ? 'var(--primary)' : 'var(--border-secondary)',
+                  backgroundColor: filters.partOfSpeech.includes(option.value) ? 'var(--primary)' : 'transparent'
+                }}
+              >
+                {filters.partOfSpeech.includes(option.value) && (
+                  <i className="ri-check-line text-xs text-white"></i>
+                )}
+              </div>
+              
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{
+                  backgroundColor: filters.partOfSpeech.includes(option.value) 
+                    ? 'var(--primary)' 
+                    : 'var(--surface-primary)',
+                  color: filters.partOfSpeech.includes(option.value) 
+                    ? 'white' 
+                    : 'var(--text-secondary)'
+                }}
+              >
+                <i className={`${option.icon} text-sm`}></i>
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div 
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {option.label}
+                </div>
+                <div 
+                  className="text-xs capitalize"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  {option.value}
+                </div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div 
+        className="p-4 rounded-xl border-l-4"
+        style={{
+          backgroundColor: 'var(--surface-secondary)',
+          borderColor: 'var(--info)'
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <i 
+            className="ri-lightbulb-line text-lg mt-0.5"
+            style={{ color: 'var(--info)' }}
+          ></i>
+          <div>
+            <h5 
+              className="font-semibold text-sm mb-1"
               style={{ color: 'var(--text-primary)' }}
             >
-              품사
-            </h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {PARTS_OF_SPEECH.map(pos => {
-              const isActive = filters.partOfSpeech.includes(pos);
-              return (
-                <button
-                  key={pos}
-                  onClick={() => handlePartOfSpeechToggle(pos)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer border"
-                  style={{
-                    backgroundColor: isActive ? 'var(--accent-primary)' : 'var(--surface-secondary)',
-                    color: isActive ? 'var(--text-on-accent)' : 'var(--text-secondary)',
-                    borderColor: isActive ? 'var(--accent-primary)' : 'var(--border-secondary)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'var(--surface-tertiary)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'var(--surface-secondary)';
-                    }
-                  }}
-                >
-                  {t(`wordbook.partOfSpeech.${pos}`)}
-                </button>
-              );
-            })}
+              빠른 필터
+            </h5>
+            <div className="space-y-2">
+              <button
+                onClick={() => setDifficultyFilter([4, 5])}
+                className="block w-full text-left text-xs p-2 rounded-lg hover:shadow-sm transition-all"
+                style={{
+                  backgroundColor: 'var(--surface-primary)',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                어려운 단어만 보기
+              </button>
+              <button
+                onClick={() => setPartOfSpeechFilter(['noun', 'verb'])}
+                className="block w-full text-left text-xs p-2 rounded-lg hover:shadow-sm transition-all"
+                style={{
+                  backgroundColor: 'var(--surface-primary)',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                명사·동사만 보기
+              </button>
+            </div>
           </div>
         </div>
       </div>

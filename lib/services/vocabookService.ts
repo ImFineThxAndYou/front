@@ -53,11 +53,20 @@ export class VocabookService {
   // 특정 사용자의 전체 단어장 목록 조회
   static async getVocabulariesByMember(membername: string): Promise<MemberVocabulary[]> {
     try {
+      console.log('🔄 API 요청 시작:', `/api/vocabook/member/${membername}`);
       const response = await apiUtils.fetchWithAuth(`/api/vocabook/member/${membername}`);
+      console.log('📡 API 응답 상태:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ API 응답 오류:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
+      
       const data = await response.json();
+      console.log('✅ API 응답 데이터:', data);
+      console.log('📊 받은 단어장 개수:', data.length);
+      
       return data;
     } catch (error) {
       console.error('❌ 사용자 단어장 목록 조회 실패:', error);

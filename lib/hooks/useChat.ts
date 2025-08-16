@@ -100,21 +100,21 @@ export const useChat = () => {
     }
   }, [currentChatRoom]);
 
-  // 사용자 인증 시 자동 WebSocket 연결 (한 번만 실행)
-  useEffect(() => {
-    console.log('🔍 useChat useEffect 실행:', {
-      hasUser: !!user,
-      userId: user?.id,
-      isConnected,
-      isConnecting,
-      shouldConnect: user && !isConnected && !isConnecting
-    });
-    
-    if (user && !isConnected && !isConnecting) {
-      console.log('🔗 useChat: 사용자 인증됨, WebSocket 연결 시도');
-      connectWebSocket();
-    }
-  }, [user?.id, connectWebSocket]); // user.id만 의존성으로 사용
+  // 자동 연결 제거 - 채팅 페이지에서만 수동으로 연결
+  // useEffect(() => {
+  //   console.log('🔍 useChat useEffect 실행:', {
+  //     hasUser: !!user,
+  //     userId: user?.id,
+  //     isConnected,
+  //     isConnecting,
+  //     shouldConnect: user && !isConnected && !isConnecting
+  //   });
+  //   
+  //   if (user && !isConnected && !isConnecting) {
+  //     console.log('🔗 useChat: 사용자 인증됨, WebSocket 연결 시도');
+  //     connectWebSocket();
+  //   }
+  // }, [user?.id, connectWebSocket]); // user.id만 의존성으로 사용
 
   // 현재 채팅방의 메시지들
   const currentMessages = currentChatRoom ? chatMessages.get(currentChatRoom) || [] : [];

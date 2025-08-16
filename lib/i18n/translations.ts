@@ -88,6 +88,7 @@ export const translations = {
       chat: '채팅',
       explore: '탐색',
       wordbook: '단어장',
+      quiz: '퀴즈',
       me: '마이페이지',
 
     },
@@ -585,6 +586,7 @@ export const translations = {
       chat: 'Chat',
       explore: 'Explore',
       wordbook: 'Wordbook',
+      quiz: 'Quiz',
       me: 'My Page',
 
     },
