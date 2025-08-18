@@ -29,14 +29,14 @@ export default function EmptyState({ hasFilters = false, onClearFilters }: Empty
         className="text-2xl font-bold mb-4"
         style={{ color: 'var(--text-primary)' }}
       >
-        {hasFilters ? '검색 결과가 없습니다' : '사용자를 찾을 수 없습니다'}
+        {hasFilters ? t('empty.noResults') : t('empty.noUsers')}
       </h3>
       
       <p 
         className="mb-8 max-w-md mx-auto text-lg"
         style={{ color: 'var(--text-secondary)' }}
       >
-        {hasFilters ? '다른 관심사로 검색해보세요' : '백엔드 API에서 데이터를 불러오는 중입니다'}
+        {hasFilters ? t('empty.noResultsDesc') : t('empty.noUsersDesc')}
       </p>
       
       {hasFilters && onClearFilters && (

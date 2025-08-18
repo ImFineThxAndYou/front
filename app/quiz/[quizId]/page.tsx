@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { quizService, QuizQuestion, QuizResult } from '../../../lib/services/quizService';
 import MainLayout from '../../components/layout/MainLayout';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
 
 export default function QuizExecutePage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function QuizExecutePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const { t } = useTranslation(['wordbook', 'common']);
 
   useEffect(() => {
     loadQuiz();
@@ -321,7 +323,7 @@ export default function QuizExecutePage() {
                 }}
               >
                 <i className="ri-question-line"></i>
-                문제 {currentQuestion.questionNo}
+                {t('quiz.questionLabel')} {currentQuestion.questionNo}
               </div>
               
               <h2 
@@ -335,7 +337,7 @@ export default function QuizExecutePage() {
                 className="text-lg"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                다음 단어의 뜻으로 가장 적절한 것을 선택하세요
+                {t('quiz.chooseCorrectMeaning')}
               </p>
             </div>
 

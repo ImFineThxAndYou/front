@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 // 퀴즈 타입 정의
 export type QuizLevel = 'A' | 'B' | 'C';
@@ -148,3 +148,4 @@ class QuizService {
 }
 
 export const quizService = new QuizService();
+

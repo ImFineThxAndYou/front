@@ -433,3 +433,4 @@ export default function QuizHistoryGrid({ onQuizStart }: QuizHistoryGridProps) {
     </div>
   );
 }
+

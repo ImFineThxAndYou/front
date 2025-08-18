@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
@@ -12,6 +13,7 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
   const [isComposing, setIsComposing] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { t } = useTranslation('chat');
 
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;
@@ -111,8 +113,8 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
               onKeyDown={handleKeyDown}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
-              placeholder="메시지를 입력하세요... (Enter: 전송, Shift+Enter: 줄바꿈)"
-              className="w-full px-6 py-4 pr-24 text-sm bg-transparent border-0 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder-opacity-70"
+              placeholder={t('messagePlaceholderWithShortcut')}
+              className="w-full px-6 py-4 pr-24 text-sm bg-transparent border-0 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               style={{
                 color: 'var(--text-primary)',
                 minHeight: '56px',

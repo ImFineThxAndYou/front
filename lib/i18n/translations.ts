@@ -158,7 +158,12 @@ export const translations = {
       noRequests: '새로운 요청이 없습니다',
       selectChat: '채팅을 선택하세요',
       startConversation: '대화를 시작해보세요',
-      findNewFriends: '새로운朋友 찾기',
+      findNewFriends: '새로운 친구 찾기',
+      messagePlaceholder: '메시지를 입력하세요...',
+      messagePlaceholderWithShortcut: '메시지를 입력하세요... (Enter: 전송, Shift+Enter: 줄바꿈)',
+      translationLabel: '번역',
+      connectTryAgain: '연결시도',
+      forceConnect: '강제 연결 시도',
       status: {
         online: '온라인',
         offline: '오프라인',
@@ -282,6 +287,9 @@ export const translations = {
         title: '퀴즈',
         review: '복습',
         settings: '퀴즈 설정',
+        newQuiz: '새 퀴즈 시작',
+        words: '단어',
+        quizHistory: '퀴즈',
         settingsDesc: '학습한 단어들을 테스트해보세요',
         allWordsTest: '전체 단어 테스트',
         allWordsDesc: '모든 단어로 종합 테스트',
@@ -312,7 +320,10 @@ export const translations = {
         viewResults: '결과 보기',
         quizComplete: '퀴즈 완료!',
         correct: '정답',
-        incorrect: '오답'
+        incorrect: '오답',
+        questionLabel: '문제',
+        chooseCorrectMeaning: '다음 단어의 뜻으로 가장 적절한 것을 선택하세요',
+        chooseCorrectWord: '다음 뜻에 해당하는 단어를 선택하세요'
       },
       stats: {
         mastered: '마스터',
@@ -321,7 +332,18 @@ export const translations = {
       common: {
         words: '개의 단어',
         today: '오늘',
-        added: '추가'
+        added: '추가',
+        wordSearch: '단어 검색...',
+        totalWords: '전체 단어',
+        todayAdded: '오늘 추가',
+        reviewNeeded: '복습 필요',
+        easyLevel: '쉬움',
+        mediumLevel: '보통',
+        hardLevel: '어려움',
+        noun: '명사',
+        verb: '동사',
+        adjective: '형용사',
+        adverb: '부사'
       },
       words: '개의 단어'
     },
@@ -657,6 +679,11 @@ export const translations = {
       selectChat: 'Select a chat',
       startConversation: 'Start a conversation',
       findNewFriends: 'Find New Friends',
+      messagePlaceholder: 'Type a message...',
+      messagePlaceholderWithShortcut: 'Type a message... (Enter: Send, Shift+Enter: New line)',
+      translationLabel: 'Translation',
+      connectTryAgain: 'Try Connect',
+      forceConnect: 'Force connection attempt',
       status: {
         online: 'Online',
         offline: 'Offline',
@@ -780,6 +807,9 @@ export const translations = {
         title: 'Quiz',
         review: 'Review',
         settings: 'Quiz Settings',
+        newQuiz: 'Start New Quiz',
+        words: 'Words',
+        quizHistory: 'Quiz',
         settingsDesc: 'Test your learned words',
         allWordsTest: 'All Words Test',
         allWordsDesc: 'Comprehensive test with all words',
@@ -810,7 +840,10 @@ export const translations = {
         viewResults: 'View Results',
         quizComplete: 'Quiz Complete!',
         correct: 'Correct',
-        incorrect: 'Incorrect'
+        incorrect: 'Incorrect',
+        questionLabel: 'Question',
+        chooseCorrectMeaning: 'Choose the most appropriate meaning for the following word',
+        chooseCorrectWord: 'Choose the word that matches the following meaning'
       },
       stats: {
         mastered: 'Mastered',
@@ -819,7 +852,18 @@ export const translations = {
       common: {
         words: ' words',
         today: 'Today',
-        added: ' added'
+        added: ' added',
+        wordSearch: 'Search words...',
+        totalWords: 'All Words',
+        todayAdded: 'Added Today',
+        reviewNeeded: 'Review Needed',
+        easyLevel: 'Easy',
+        mediumLevel: 'Medium',
+        hardLevel: 'Hard',
+        noun: 'Noun',
+        verb: 'Verb',
+        adjective: 'Adjective',
+        adverb: 'Adverb'
       },
       words: ' words'
     },

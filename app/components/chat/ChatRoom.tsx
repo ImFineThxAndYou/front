@@ -11,6 +11,7 @@ import { useChat } from '../../../lib/hooks/useChat';
 import { useChatStore } from '../../../lib/stores/chat';
 import Avatar from '../ui/Avatar';
 import { formatDistanceToNow } from '../../../lib/utils/dateUtils';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
 
 interface ChatRoomProps {
   roomUuid: string;
@@ -34,6 +35,7 @@ export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomPro
     currentMessages
   } = useChat();
   const { loadMessages } = useChatStore();
+  const { t } = useTranslation('chat');
 
   // 메시지 스크롤을 맨 아래로
   const scrollToBottom = () => {
@@ -191,7 +193,7 @@ export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomPro
               }}
               className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
             >
-              🔧 연결시도
+              🔧 {t('connectTryAgain')}
             </button>
           )}
           
@@ -217,7 +219,7 @@ export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomPro
                 className="text-xs"
                 style={{ color: 'var(--text-tertiary)' }}
               >
-                {isConnected ? '온라인' : '오프라인'}
+                {isConnected ? t('online') : t('offline')}
               </span>
             </div>
           </div>
@@ -285,11 +287,11 @@ export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomPro
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="메시지를 입력하세요..."
-              className="w-full px-4 py-3 rounded-2xl resize-none border focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder={t('messagePlaceholder')}
+              className="w-full px-4 py-3 rounded-2xl resize-none border focus:outline-none focus:ring-2 focus:ring-purple-500 input-enhanced"
               style={{
-                backgroundColor: 'var(--surface-secondary)',
-                borderColor: 'var(--border-secondary)',
+                backgroundColor: 'var(--input-bg)',
+                borderColor: 'var(--input-border)',
                 color: 'var(--text-primary)',
               }}
               rows={1}

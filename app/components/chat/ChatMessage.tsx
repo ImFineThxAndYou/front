@@ -136,7 +136,7 @@ export default function ChatMessage({
               >
                 <div className="flex items-center space-x-2 mb-1">
                   <i className="ri-translate-2 text-xs"></i>
-                  <span className="text-xs font-medium">번역</span>
+                  <span className="text-xs font-medium">{t('translationLabel')}</span>
                 </div>
                 <div className="text-sm">{existingTranslation}</div>
               </div>

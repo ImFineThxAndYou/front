@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
 
 interface WordbookSidebarProps {
   selectedCategory: string;
@@ -35,6 +36,7 @@ export default function WordbookSidebar({
   onViewChange
 }: WordbookSidebarProps) {
   const router = useRouter();
+  const { t } = useTranslation(['wordbook', 'common']);
 
   const categoryGroups = [
     {
@@ -42,7 +44,7 @@ export default function WordbookSidebar({
       items: [
         {
           id: 'all',
-          label: '전체 단어',
+          label: t('common.totalWords'),
           count: stats.total,
           icon: 'ri-book-line',
           color: 'var(--primary)',
@@ -50,7 +52,7 @@ export default function WordbookSidebar({
         },
         {
           id: 'today',
-          label: '오늘 추가',
+          label: t('common.todayAdded'),
           count: stats.today,
           icon: 'ri-calendar-line',
           color: 'var(--success)',
@@ -58,7 +60,7 @@ export default function WordbookSidebar({
         },
         {
           id: 'review',
-          label: '복습 필요',
+          label: t('common.reviewNeeded'),
           count: stats.review,
           icon: 'ri-refresh-line',
           color: 'var(--warning)',
@@ -71,7 +73,7 @@ export default function WordbookSidebar({
       items: [
         {
           id: 'easy',
-          label: '쉬움',
+          label: t('common.easyLevel'),
           count: stats.easy,
           icon: 'ri-check-circle-line',
           color: '#10b981',
@@ -79,7 +81,7 @@ export default function WordbookSidebar({
         },
         {
           id: 'medium',
-          label: '보통',
+          label: t('common.mediumLevel'),
           count: stats.medium,
           icon: 'ri-time-line',
           color: '#f59e0b',
@@ -87,7 +89,7 @@ export default function WordbookSidebar({
         },
         {
           id: 'hard',
-          label: '어려움',
+          label: t('common.hardLevel'),
           count: stats.hard,
           icon: 'ri-alert-circle-line',
           color: '#ef4444',
@@ -100,7 +102,7 @@ export default function WordbookSidebar({
       items: [
         {
           id: 'noun',
-          label: '명사',
+          label: t('common.noun'),
           count: stats.nouns,
           icon: 'ri-bookmark-line',
           color: '#8b5cf6',
@@ -108,7 +110,7 @@ export default function WordbookSidebar({
         },
         {
           id: 'verb',
-          label: '동사',
+          label: t('common.verb'),
           count: stats.verbs,
           icon: 'ri-play-line',
           color: '#06b6d4',
@@ -116,7 +118,7 @@ export default function WordbookSidebar({
         },
         {
           id: 'adjective',
-          label: '형용사',
+          label: t('common.adjective'),
           count: stats.adjectives,
           icon: 'ri-star-line',
           color: '#f97316',
@@ -124,7 +126,7 @@ export default function WordbookSidebar({
         },
         {
           id: 'adverb',
-          label: '부사',
+          label: t('common.adverb'),
           count: stats.adverbs,
           icon: 'ri-speed-line',
           color: '#ec4899',
@@ -152,13 +154,13 @@ export default function WordbookSidebar({
               className="text-xl font-bold"
               style={{ color: 'var(--text-primary)' }}
             >
-              단어장
+              {t('title')}
             </h1>
             <p 
               className="text-sm"
               style={{ color: 'var(--text-secondary)' }}
             >
-              {stats.total}개의 단어
+              {stats.total}{t('common.words')}
             </p>
           </div>
         </div>
@@ -171,7 +173,7 @@ export default function WordbookSidebar({
           ></i>
           <input
             type="text"
-            placeholder="단어 검색..."
+            placeholder={t('common.wordSearch')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 transition-all"
@@ -196,7 +198,7 @@ export default function WordbookSidebar({
             }}
           >
             <i className="ri-book-line"></i>
-            단어
+            {t('quiz.words')}
           </button>
           
           <button
@@ -210,7 +212,7 @@ export default function WordbookSidebar({
             }}
           >
             <i className="ri-trophy-line"></i>
-            퀴즈
+            {t('quiz.quizHistory')}
           </button>
         </div>
 
@@ -223,7 +225,7 @@ export default function WordbookSidebar({
           }}
         >
           <i className="ri-play-circle-line"></i>
-          새 퀴즈 시작
+          {t('quiz.newQuiz')}
         </button>
       </div>
 

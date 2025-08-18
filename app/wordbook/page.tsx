@@ -193,16 +193,16 @@ export default function WordbookPage() {
                 onClick={testVocabookAPI}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
-                🧪 단어장 API 테스트
+                🧪 {t('common.loading')}
               </button>
               <button 
                 onClick={() => loadWords(user?.membername || 'test')}
                 className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
               >
-                🔄 Store 로드 테스트 ({user?.membername || 'test'})
+                🔄 {t('common.loading')} ({user?.membername || 'test'})
               </button>
               <span className="px-4 py-2 bg-gray-200 rounded">
-                현재 단어 개수: {words.length}
+                {t('common.words')}: {words.length}
               </span>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function WordbookPage() {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="text-gray-600 dark:text-gray-400">단어장을 불러오는 중...</p>
+                <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
               </div>
             </div>
           ) : activeView === 'words' ? (

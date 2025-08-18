@@ -35,7 +35,8 @@ export class WebSocketManager {
       this.client = new Client({
         webSocketFactory: () => {
           // SockJS에 인증 헤더 추가
-          const sock = new SockJS('http://localhost:8080/ws-chatroom', null, {
+          const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:8080';
+          const sock = new SockJS(`${wsBaseUrl}/ws-chatroom`, null, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
           // 연결 시 토큰을 헤더에 추가

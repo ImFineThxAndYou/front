@@ -13,10 +13,10 @@ export default function QuizPage() {
   const [selectedLevel, setSelectedLevel] = useState<QuizLevel | 'ALL'>('ALL');
 
   const levels: { value: QuizLevel | 'ALL'; label: string; description: string; color: string }[] = [
-    { value: 'ALL', label: '전체 랜덤', description: '모든 난이도 단어 혼합', color: 'var(--primary)' },
-    { value: 'A', label: 'A 레벨', description: '초급 단어', color: 'var(--success)' },
-    { value: 'B', label: 'B 레벨', description: '중급 단어', color: 'var(--warning)' },
-    { value: 'C', label: 'C 레벨', description: '고급 단어', color: 'var(--danger)' },
+    { value: 'ALL', label: t('quiz.mixed'), description: t('quiz.mixedDesc'), color: 'var(--primary)' },
+    { value: 'A', label: 'A ' + t('common.difficulty.beginner'), description: t('common.difficulty.beginner'), color: 'var(--success)' },
+    { value: 'B', label: 'B ' + t('common.difficulty.intermediate'), description: t('common.difficulty.intermediate'), color: 'var(--warning)' },
+    { value: 'C', label: 'C ' + t('common.difficulty.advanced'), description: t('common.difficulty.advanced'), color: 'var(--danger)' },
   ];
 
   const handleStartQuiz = async (type: 'random' | 'today') => {
@@ -33,7 +33,7 @@ export default function QuizPage() {
       router.push(`/quiz/${quiz.quizUUID}`);
     } catch (error) {
       console.error('퀴즈 시작 실패:', error);
-      alert('퀴즈를 시작할 수 없습니다. 다시 시도해주세요.');
+      alert(t('common.error'));
     } finally {
       setIsLoading(false);
     }

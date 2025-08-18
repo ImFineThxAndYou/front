@@ -432,3 +432,4 @@ export default function WordDetailCard({ word, onClose }: WordDetailCardProps) {
     </div>
   );
 }
+

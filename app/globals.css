@@ -15,6 +15,7 @@
   --text-secondary: #334155;
   --text-tertiary: #64748b;
   --text-quaternary: #94a3b8;
+  --text-muted: #71717a;
   
   --border-primary: #e2e8f0;
   --border-secondary: #cbd5e1;
@@ -65,6 +66,14 @@
   --surface-primary-alpha: rgba(255, 255, 255, 0.9);
   --overlay: rgba(0, 0, 0, 0.5);
   
+  /* 고대비 텍스트 색상 */
+  --text-high-contrast: #000000;
+  --text-medium-contrast: #374151;
+  --text-low-contrast: #6b7280;
+  
+  /* placeholder 색상 */
+  --placeholder-color: #9ca3af;
+  
   --gradient-primary: linear-gradient(135deg, var(--info), var(--success));
   --gradient-secondary: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   --gradient-tertiary: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
@@ -82,6 +91,7 @@
   --text-secondary: #e2e8f0;
   --text-tertiary: #cbd5e1;
   --text-quaternary: #94a3b8;
+  --text-muted: #a1a1aa;
   
   --border-primary: #334155;
   --border-secondary: #475569;
@@ -131,6 +141,14 @@
   --border-primary-alpha: rgba(51, 65, 85, 0.5);
   --surface-primary-alpha: rgba(30, 41, 59, 0.9);
   --overlay: rgba(0, 0, 0, 0.7);
+  
+  /* 고대비 텍스트 색상 (다크모드) */
+  --text-high-contrast: #ffffff;
+  --text-medium-contrast: #e5e7eb;
+  --text-low-contrast: #9ca3af;
+  
+  /* placeholder 색상 (다크모드) */
+  --placeholder-color: #6b7280;
   
   --gradient-primary: linear-gradient(135deg, var(--info), var(--success));
   --gradient-secondary: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
@@ -224,6 +242,66 @@ body {
 /* ===== 유틸리티 클래스 ===== */
 .theme-transition {
   transition: all 0.3s ease;
+}
+
+/* ===== Placeholder 스타일 개선 ===== */
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder-color) !important;
+  opacity: 0.8;
+}
+
+input:focus::placeholder,
+textarea:focus::placeholder {
+  opacity: 0.6;
+}
+
+/* ===== 텍스트 대비 개선 클래스 ===== */
+.text-high-contrast {
+  color: var(--text-high-contrast) !important;
+}
+
+.text-medium-contrast {
+  color: var(--text-medium-contrast) !important;
+}
+
+.text-low-contrast {
+  color: var(--text-low-contrast) !important;
+}
+
+/* ===== 버튼 및 인터랙티브 요소 대비 개선 ===== */
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+  border: 1px solid var(--accent-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-secondary);
+  border-color: var(--accent-secondary);
+}
+
+.btn-secondary {
+  background-color: var(--surface-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--surface-tertiary);
+  border-color: var(--border-tertiary);
+}
+
+/* ===== 입력 필드 대비 개선 ===== */
+.input-enhanced {
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+}
+
+.input-enhanced:focus {
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(var(--accent-primary-rgb), 0.1);
 }
 
 /* 그라데이션 텍스트 렌더링 개선 */

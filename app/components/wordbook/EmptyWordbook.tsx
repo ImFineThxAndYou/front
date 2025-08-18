@@ -41,13 +41,13 @@ export default function EmptyWordbook({ hasSearch, onAddWord }: EmptyWordbookPro
                 className="text-3xl font-bold"
                 style={{ color: 'var(--text-primary)' }}
               >
-                검색 결과가 없어요
+                {t('empty.noResults')}
               </h3>
               <p 
                 className="text-xl"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                다른 키워드로 검색해보시거나 새로운 단어를 추가해보세요
+                {t('empty.noResultsDesc')}
               </p>
             </div>
             
@@ -62,7 +62,7 @@ export default function EmptyWordbook({ hasSearch, onAddWord }: EmptyWordbookPro
               }}
             >
               <i className="ri-add-line w-6 h-6 mr-3 group-hover:rotate-90 transition-transform duration-300" />
-              새 단어 추가하기
+              {t('addWord')}
             </button>
           </div>
         ) : (
@@ -97,14 +97,13 @@ export default function EmptyWordbook({ hasSearch, onAddWord }: EmptyWordbookPro
                   backgroundClip: 'text'
                 }}
               >
-                단어장이 비어있어요 ✨
+                {t('empty.title')}
               </h2>
               <p 
                 className="text-xl max-w-lg mx-auto leading-relaxed"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                첫 번째 단어를 추가하고 영어 학습 여정을 시작해보세요! 
-                <br />채팅에서 배운 단어들도 자동으로 추가될 거예요.
+                {t('empty.description')}
               </p>
             </div>
             
@@ -120,7 +119,7 @@ export default function EmptyWordbook({ hasSearch, onAddWord }: EmptyWordbookPro
                 }}
               >
                 <i className="ri-add-line w-6 h-6 mr-3 group-hover:rotate-90 transition-transform duration-300" />
-                첫 단어 추가하기
+                {t('empty.addFirst')}
               </button>
               
               <div 
