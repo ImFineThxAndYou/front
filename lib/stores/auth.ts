@@ -34,6 +34,35 @@ interface AuthState {
   checkAuth: () => Promise<boolean>;
 }
 
+// 안전한 localStorage 접근 함수
+const getLocalStorageItem = (key: string): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(key);
+  } catch (error) {
+    console.error('localStorage 접근 오류:', error);
+    return null;
+  }
+};
+
+const setLocalStorageItem = (key: string, value: string): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    console.error('localStorage 설정 오류:', error);
+  }
+};
+
+const removeLocalStorageItem = (key: string): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.error('localStorage 삭제 오류:', error);
+  }
+};
+
 // 목업 사용자 제거 - 실제 API 응답 사용
 
 export const useAuthStore = create<AuthState>()(
@@ -59,7 +88,7 @@ export const useAuthStore = create<AuthState>()(
           };
           
           // 로컬 스토리지에서 토큰 가져오기
-          const accessToken = localStorage.getItem('accessToken');
+          const accessToken = getLocalStorageItem('accessToken');
           console.log('🔑 useAuthStore: 저장된 토큰:', accessToken);
           
           set({ 
@@ -98,127 +127,135 @@ export const useAuthStore = create<AuthState>()(
           console.log('✅ useAuthStore: 백엔드 로그아웃 성공');
         } catch (error) {
           console.error('❌ useAuthStore: 백엔드 로그아웃 실패:', error);
-          // 백엔드 로그아웃 실패해도 로컬 정리는 진행
+        } finally {
+          // 로컬 상태 정리
+          set({ 
+            user: null, 
+            accessToken: null, 
+            isAuthenticated: false, 
+            isLoading: false 
+          });
+          console.log('✅ useAuthStore: 로컬 상태 정리 완료');
         }
-        
-        // 로컬 스토리지 완전 정리
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('auth-storage');
-        localStorage.removeItem('ui-storage');
-        localStorage.removeItem('chat-storage');
-        localStorage.removeItem('wordbook-storage');
-        localStorage.removeItem('explore-storage');
-        
-        // axios 헤더에서 토큰 제거
-        delete authService.axios?.defaults.headers.common['Authorization'];
-        
-        // Zustand 상태 초기화
-        set({ 
-          user: null, 
-          accessToken: null, 
-          isAuthenticated: false 
-        });
-        
-        console.log('🗑️ useAuthStore: 로컬 스토리지 및 상태 정리 완료');
-        
-        // 페이지 새로고침으로 완전한 초기화
-        window.location.href = '/';
       },
 
       setUser: (user: User) => {
-        set({ user, isAuthenticated: true });
+        console.log('👤 useAuthStore: 사용자 설정', user);
+        set({ user });
       },
 
       setAccessToken: (token: string) => {
+        console.log('🔑 useAuthStore: 토큰 설정', token.substring(0, 20) + '...');
         set({ accessToken: token, isAuthenticated: true });
       },
 
       updateProfile: async (data: Partial<User>) => {
-        const { user } = get();
-        if (user) {
-          const updatedUser = { ...user, ...data };
-          set({ user: updatedUser });
+        console.log('📝 useAuthStore: 프로필 업데이트 시작', data);
+        
+        try {
+          const response = await authService.updateProfile(data);
+          console.log('✅ useAuthStore: 프로필 업데이트 성공', response);
+          
+          // 현재 사용자 정보와 병합
+          const currentUser = get().user;
+          if (currentUser) {
+            const updatedUser = { ...currentUser, ...data };
+            set({ user: updatedUser });
+            console.log('✅ useAuthStore: 사용자 정보 업데이트 완료', updatedUser);
+          }
+        } catch (error) {
+          console.error('❌ useAuthStore: 프로필 업데이트 실패:', error);
+          throw error;
         }
       },
 
       checkAuth: async () => {
+        console.log('🔍 useAuthStore: 인증 상태 확인 시작');
+        
         try {
-          const token = localStorage.getItem('accessToken');
-          console.log('🔍 useAuthStore: checkAuth 시작, 토큰 존재:', !!token);
-          
-          if (!token) {
-            console.log('❌ useAuthStore: 토큰 없음, 인증 실패');
-            set({ isAuthenticated: false, user: null });
+          // 로컬 스토리지에서 토큰 확인
+          const accessToken = getLocalStorageItem('accessToken');
+          if (!accessToken) {
+            console.log('❌ useAuthStore: 토큰이 없음');
+            set({ isAuthenticated: false, user: null, accessToken: null });
             return false;
           }
 
-          // axios 헤더에 토큰 설정
-          const { authService } = await import('../services/auth');
-          authService.setAccessToken(token);
-          
-          // 토큰 유효성 검증 (백엔드 API 호출)
+          // 토큰이 있으면 프로필 조회로 유효성 확인
           const profile = await authService.getMyProfile();
-          console.log('✅ useAuthStore: 토큰 유효성 검증 성공', profile);
-          
-          // 사용자 정보 설정
           if (profile) {
-            console.log('📝 useAuthStore: 프로필 데이터 확인:', profile);
-            
-            const userData: User = {
+            const user: User = {
               membername: profile.membername,
               email: profile.email,
               nickname: profile.nickname,
               avatarUrl: profile.avatarUrl,
               bio: profile.bio,
-              interests: profile.interests ? (Array.isArray(profile.interests) ? profile.interests : []) : [],
-              isProfileComplete: profile.completed || false,
+              interests: profile.interests,
+              isProfileComplete: profile.completed,
               language: profile.language,
               timezone: profile.timezone,
               birthDate: profile.birthDate,
               age: profile.age,
               country: profile.country,
-              region: profile.region,
-              provider: 'google' // OAuth에서 온 경우
+              region: profile.region
             };
             
-            console.log('📝 useAuthStore: 생성할 사용자 데이터:', userData);
-            
             set({ 
-              user: userData, 
-              accessToken: token,
+              user, 
+              accessToken, 
               isAuthenticated: true 
             });
             
-            // localStorage에 currentUser 저장
-            localStorage.setItem('currentUser', JSON.stringify(userData));
-            console.log('💾 useAuthStore: localStorage에 currentUser 저장:', userData);
-            
-            console.log('✅ useAuthStore: 사용자 정보 설정 완료', userData);
-            console.log('✅ useAuthStore: 상태 업데이트 완료 - user:', !!userData, 'isAuthenticated: true');
-          } else {
-            console.warn('⚠️ useAuthStore: profile.data가 없음');
+            console.log('✅ useAuthStore: 인증 상태 확인 성공', user);
+            return true;
           }
-          
-          return true;
         } catch (error) {
-          console.error('❌ useAuthStore: 토큰 유효성 검증 실패:', error);
-          // 토큰이 유효하지 않으면 로그아웃
-          set({ isAuthenticated: false, user: null, accessToken: null });
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('currentUser');
-          console.log('🗑️ useAuthStore: 토큰 검증 실패로 currentUser 제거');
-          return false;
+          console.error('❌ useAuthStore: 인증 상태 확인 실패:', error);
+          // 인증 실패 시 상태 정리
+          set({ 
+            user: null, 
+            accessToken: null, 
+            isAuthenticated: false 
+          });
+          
+          // 로컬 스토리지도 정리
+          removeLocalStorageItem('accessToken');
+          removeLocalStorageItem('currentUser');
         }
+        
+        return false;
       }
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ 
-        user: state.user, 
-        accessToken: state.accessToken,
-        isAuthenticated: state.isAuthenticated 
-      })
+      // 서버 사이드에서 안전하게 처리 (새로운 storage 옵션 사용)
+      storage: {
+        getItem: (name: string) => {
+          if (typeof window === 'undefined') return null;
+          try {
+            return localStorage.getItem(name);
+          } catch (error) {
+            console.error('Zustand storage getItem 오류:', error);
+            return null;
+          }
+        },
+        setItem: (name: string, value: string) => {
+          if (typeof window === 'undefined') return;
+          try {
+            localStorage.setItem(name, value);
+          } catch (error) {
+            console.error('Zustand storage setItem 오류:', error);
+          }
+        },
+        removeItem: (name: string) => {
+          if (typeof window === 'undefined') return;
+          try {
+            localStorage.removeItem(name);
+          } catch (error) {
+            console.error('Zustand storage removeItem 오류:', error);
+          }
+        }
+      }
     }
   )
 );
