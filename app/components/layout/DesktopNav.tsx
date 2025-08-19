@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
+import Logo from '../Logo';
 
 const navigationItems = [
   { name: 'chat', href: '/chat', icon: 'ri-chat-3-line', activeIcon: 'ri-chat-3-fill' },
@@ -77,16 +78,14 @@ export default function DesktopNav({ onExpandChange }: DesktopNavProps) {
       {/* 로고 영역 - 고정된 높이 */}
       <div className="h-24 flex items-center border-b px-8" style={{ borderColor: 'var(--border-primary)' }}>
         <div className="flex items-center w-full">
-          <div 
-            className="rounded-2xl flex-shrink-0 shadow-lg p-2"
-            style={{
-              background: 'var(--gradient-secondary)'
-            }}
-          >
-            <i className="ri-heart-line text-white text-xl"></i>
+          {/* 아이콘 로고 - 항상 표시 */}
+          <div className="flex-shrink-0">
+            <Logo variant="icon" size="md" showText={false} />
           </div>
+          
+          {/* 텍스트 로고 - 확장 시에만 표시 */}
           <div 
-            className="ml-4 overflow-hidden"
+            className="overflow-hidden"
             style={{
               opacity: shouldShowExpanded ? 1 : 0,
               maxWidth: shouldShowExpanded ? '200px' : '0px',
@@ -94,20 +93,7 @@ export default function DesktopNav({ onExpandChange }: DesktopNavProps) {
               transition: 'opacity 0.3s ease-in-out 0.1s, max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           >
-            <h1 
-              className="text-2xl font-['Pacifico'] whitespace-nowrap"
-              style={{
-                background: 'var(--gradient-secondary)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
-              }}
-            >
-              howareyou
-            </h1>
-            <p className="text-xs mt-1 whitespace-nowrap" style={{ color: 'var(--text-tertiary)' }}>
-              언어 학습의 새로운 경험
-            </p>
+            <Logo variant="text" size="md" />
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../lib/stores/auth';
 import { useTranslation } from '../../lib/hooks/useTranslation';
+import Logo from './Logo';
 
 export default function Landing() {
   const { t } = useTranslation('landing');
@@ -65,12 +66,7 @@ export default function Landing() {
           {/* Header Section */}
           <div className="text-center mb-12">
             <div className="flex justify-center items-center mb-6">
-              <h1 className="text-5xl font-['Pacifico'] text-indigo-600 mr-3">
-                howareyou
-              </h1>
-              <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center">
-                <i className="ri-message-3-line text-white text-xl"></i>
-              </div>
+              <Logo variant="full" size="lg" className="mr-4" />
             </div>
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
               {t('subtitle')}

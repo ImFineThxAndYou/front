@@ -4,13 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_ENV=development next dev -H 0.0.0.0 -p 3000",
+    "dev:clean": "rm -rf .next && cross-env NODE_ENV=development next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
-    "clean": "rm -rf .next && rm -rf node_modules/.cache"
+    "clean": "rm -rf .next && rm -rf node_modules/.cache",
+    "reset": "rm -rf .next node_modules/.cache && npm run dev"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.19.3",

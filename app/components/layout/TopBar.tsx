@@ -11,6 +11,7 @@ import Avatar from '../ui/Avatar';
 import { useNotification } from '../../../lib/hooks/useNotification';
 import { useChat } from '../../../lib/hooks/useChat';
 import NotificationList from '../ui/NotificationList';
+import Logo from '../Logo';
 
 interface TopBarProps {
   onMenuClick?: () => void;
@@ -118,22 +119,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
                 <i className="ri-menu-line text-lg"></i>
               </button>
             )}
-            <div 
-              className="rounded-xl p-2 mr-3 shadow-lg"
-              style={{
-                background: 'var(--gradient-secondary)'
-              }}
-            >
-              <i className="ri-heart-line text-white text-lg"></i>
-            </div>
-            <h1 
-              className="text-xl font-['Pacifico'] bg-clip-text text-transparent"
-              style={{
-                background: 'var(--gradient-secondary)'
-              }}
-            >
-              howareyou
-            </h1>
+            <Logo variant="icon" size="sm" showText={false} />
           </div>
         </div>
 
