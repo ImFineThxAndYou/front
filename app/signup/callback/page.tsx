@@ -33,77 +33,58 @@ function AuthCallbackContent() {
           const allCookies = getAllCookies();
           console.log('🍪 모든 쿠키:', allCookies);
 
-          // OAuth2 토큰 처리
+          // OAuth2 토큰 처리 - 최적화된 버전
           try {
             console.log('🔄 OAuth 콜백: OAuth2 토큰 처리 시작');
             
-            // 1. fetch로 리프레싱 요청 (membername 포함, 쿠키 자동 포함)
+            // 1. 빠른 리프레싱 요청 (membername 포함)
             const response = await fetch('http://localhost:8080/api/auth/refresh?membername=' + encodeURIComponent(provider || 'google'), {
               method: 'POST',
-              credentials: 'include', // 쿠키 포함
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
             });
             
             if (!response.ok) {
               throw new Error(`리프레싱 실패: ${response.status}`);
             }
             
-            // 2. 응답 헤더에서 Access Token 추출
+            // 2. Access Token 저장
             const accessToken = response.headers.get('Authorization');
             if (accessToken && accessToken.startsWith('Bearer ')) {
               const token = accessToken.substring(7);
               localStorage.setItem('accessToken', token);
+              setAccessToken(token);
               console.log('✅ Access Token 저장됨');
             } else {
               throw new Error('Access Token을 받지 못했습니다');
             }
             
-            // 3. 사용자 정보 조회
-            try {
-              const { authService } = await import('@/lib/services/auth');
-              const profile = await authService.getMyProfile();
-                
-              if (profile) {
-                const userData = {
-                  membername: profile.membername,
-                  email: profile.email,
-                  nickname: profile.nickname,
-                  avatarUrl: profile.avatarUrl,
-                  bio: profile.bio,
-                  interests: profile.interests ? (Array.isArray(profile.interests) ? profile.interests : []) : [],
-                  isProfileComplete: profile.completed || false,
-                  language: profile.language,
-                  timezone: profile.timezone,
-                  birthDate: profile.birthDate,
-                  age: profile.age,
-                  country: profile.country,
-                  region: profile.region,
-                  provider: provider || 'google'
-                };
-                
-                setUser(userData);
-                
-                // 로컬 스토리지에서 토큰 가져와서 설정
-                const token = localStorage.getItem('accessToken');
-                if (token) {
-                  setAccessToken(token);
-                }
-                
-                console.log('✅ OAuth 콜백: 사용자 정보 설정 완료', userData);
-              }
-            } catch (profileError) {
-              console.warn('⚠️ OAuth 콜백: 프로필 조회 실패 (계속 진행)', profileError);
-            }
+            // 3. 기본 사용자 정보 설정 (프로필 조회 생략)
+            const userData = {
+              membername: provider || 'google',
+              email: '',
+              nickname: '',
+              avatarUrl: '',
+              bio: '',
+              interests: [],
+              isProfileComplete: profileCompleted === 'true',
+              language: 'ko',
+              timezone: 'Asia/Seoul',
+              birthDate: '',
+              age: 0,
+              country: '',
+              region: '',
+              provider: provider || 'google'
+            };
             
-            console.log('✅ OAuth 콜백: OAuth2 처리 완료');
+            setUser(userData);
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+            
+            console.log('✅ OAuth 콜백: 빠른 처리 완료');
           } catch (tokenError) {
             console.error('❌ OAuth 콜백: OAuth2 처리 중 오류:', tokenError);
             setError('인증 처리 중 오류가 발생했습니다.');
-            setTimeout(() => {
-              router.push('/');
-            }, 3000);
+            setTimeout(() => { router.push('/'); }, 3000);
             return;
           }
 
