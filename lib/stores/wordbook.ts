@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { vocabookService, type MemberWordEntry, type MemberVocabulary, type VocabularyWordEntry, type VocabularyApiResponse } from '../services/vocabookService';
 
 export interface Word {
   id: string;
@@ -34,6 +35,10 @@ interface WordbookState {
   quizSettings: QuizSettings;
   isLoading: boolean;
   
+  // API data loading
+  loadWords: (membername: string) => Promise<void>;
+  refreshWords: () => Promise<void>;
+  
   // Word management
   addWord: (word: Omit<Word, 'id' | 'createdAt'>) => Promise<void>;
   updateWord: (id: string, word: Partial<Word>) => Promise<void>;
@@ -61,64 +66,60 @@ interface WordbookState {
   getWordsByDifficulty: (difficulty: number) => Word[];
 }
 
-// Mock data for development
-const mockWords: Word[] = [
-  {
-    id: '1',
-    word: 'apple',
-    meanings: ['사과'],
-    partOfSpeech: 'noun',
-    difficulty: 1,
-    examples: ['I eat an apple every day.'],
-    tags: ['fruit', 'food'],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    word: 'beautiful',
-    meanings: ['아름다운', '예쁜'],
-    partOfSpeech: 'adjective',
-    difficulty: 2,
-    examples: ['She is a beautiful person.'],
-    tags: ['appearance', 'positive'],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    word: 'run',
-    meanings: ['달리다', '운영하다'],
-    partOfSpeech: 'verb',
-    difficulty: 1,
-    examples: ['I run every morning.', 'He runs a business.'],
-    tags: ['movement', 'action'],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    word: 'quickly',
-    meanings: ['빠르게'],
-    partOfSpeech: 'adverb',
-    difficulty: 2,
-    examples: ['He quickly finished his homework.'],
-    tags: ['speed', 'manner'],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    word: 'knowledge',
-    meanings: ['지식', '학식'],
-    partOfSpeech: 'noun',
-    difficulty: 3,
-    examples: ['Knowledge is power.'],
-    tags: ['education', 'intelligence'],
-    createdAt: new Date().toISOString(),
+// level을 difficulty로 변환하는 공통 함수
+const levelToDifficulty = (level: string): number => {
+  switch (level.toLowerCase()) {
+    case 'a1': return 1;
+    case 'a2': return 2;
+    case 'b1': return 3;
+    case 'b2': return 4;
+    case 'c1': return 5;
+    case 'c2': return 6;
+    case 'easy': return 1;
+    case 'medium': return 3;
+    case 'hard': return 5;
+    default: return 1;
   }
-];
+};
+
+// 새로운 API 응답을 위한 변환 함수
+const convertVocabularyWordToWord = (vocabWord: VocabularyWordEntry, index: number): Word => {
+  console.log('🔄 [Store] 단어 변환 (새 API):', vocabWord.word);
+  
+  return {
+    id: `${vocabWord.word}-${vocabWord.chatRoomUuid}-${index}-${Date.now()}`,
+    word: vocabWord.word,
+    meanings: [vocabWord.meaning],
+    partOfSpeech: vocabWord.pos || 'noun',
+    difficulty: levelToDifficulty(vocabWord.level),
+    examples: vocabWord.example || [],
+    tags: [vocabWord.lang, vocabWord.level].filter(Boolean),
+    createdAt: vocabWord.analyzedAt,
+    sourceChatId: vocabWord.chatRoomUuid
+  };
+};
+
+// 기존 API 응답을 위한 변환 함수 (호환성 유지)
+const convertMemberWordToWord = (memberWord: MemberWordEntry, index: number): Word => {
+  console.log('🔄 [Store] 단어 변환 (기존 API):', memberWord.word);
+  
+  return {
+    id: `${memberWord.word}-${memberWord.chatRoomUuid}-${index}`,
+    word: memberWord.word,
+    meanings: [memberWord.meaning],
+    partOfSpeech: memberWord.pos || 'noun',
+    difficulty: levelToDifficulty(memberWord.level),
+    examples: memberWord.usedInMessages || [],
+    tags: [memberWord.lang, memberWord.dictionaryType].filter(Boolean),
+    createdAt: memberWord.analyzedAt,
+    sourceChatId: memberWord.chatRoomUuid
+  };
+};
 
 export const useWordbookStore = create<WordbookState>()(
   persist(
     (set, get) => ({
-      words: mockWords,
+      words: [], // 빈 배열로 초기화
       filters: {
         difficulty: [],
         partOfSpeech: [],
@@ -133,6 +134,49 @@ export const useWordbookStore = create<WordbookState>()(
         timePerQuestion: 30
       },
       isLoading: false,
+
+      // API data loading (새로운 API 응답 구조용)
+      loadWords: async (membername: string) => {
+        console.log('🔄 [Store] 단어장 데이터 로딩 시작:', membername);
+        set({ isLoading: true });
+        try {
+          const apiResponse = await vocabookService.getVocabulariesByMember(membername);
+          console.log('📦 [Store] 받은 API 응답:', {
+            totalElements: apiResponse.totalElements,
+            contentLength: apiResponse.content?.length,
+            pageable: apiResponse.pageable
+          });
+          
+          // 새로운 API 응답 구조 처리
+          const vocabularyWords = apiResponse.content || [];
+          console.log('📚 [Store] 처리할 단어 개수:', vocabularyWords.length);
+          
+          // 모든 단어들을 Word 인터페이스로 변환
+          const allWords: Word[] = vocabularyWords.map((vocabWord, index) => {
+            return convertVocabularyWordToWord(vocabWord, index);
+          });
+
+          console.log('✅ [Store] 단어장 데이터 로딩 완료:', allWords.length, '개 단어');
+          console.log('🔍 [Store] 변환된 첫 번째 단어 샘플:', allWords[0]);
+          console.log('🔍 [Store] 변환된 마지막 단어 샘플:', allWords[allWords.length - 1]);
+          
+          set({ words: allWords, isLoading: false });
+        } catch (error) {
+          console.error('❌ [Store] 단어장 데이터 로딩 실패:', error);
+          set({ isLoading: false });
+        }
+      },
+
+      refreshWords: async () => {
+        // 현재 사용자 정보를 가져오기 위해 localStorage에서 확인
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+          const userData = JSON.parse(currentUser);
+          if (userData.membername) {
+            await get().loadWords(userData.membername);
+          }
+        }
+      },
 
       // Word management
       addWord: async (wordData) => {

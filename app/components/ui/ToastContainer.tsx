@@ -3,6 +3,7 @@
 
 import { useNotification } from '../../../lib/hooks/useNotification';
 import NotificationToast from './NotificationToast';
+import { logger } from '../../../lib/utils/logger';
 
 export default function ToastContainer() {
   const { toasts, removeToast } = useNotification();

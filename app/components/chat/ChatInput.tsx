@@ -2,6 +2,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useUIStore } from '../../../lib/stores/ui';
+import { translations } from '../../../lib/i18n/translations';
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
@@ -12,6 +14,45 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
   const [isComposing, setIsComposing] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { language } = useUIStore();
+
+  // 번역 함수
+  const t = (key: string) => {
+    const currentLang = language || 'ko';
+    const translationSource = translations[currentLang as keyof typeof translations];
+    
+    // chat 네임스페이스에서 번역 찾기
+    const chatTranslations = translationSource.chat as any;
+    if (chatTranslations) {
+      const keys = key.split('.');
+      let value: any = chatTranslations;
+      
+      for (const k of keys) {
+        value = value?.[k];
+      }
+      
+      if (value) {
+        return value;
+      }
+    }
+    
+    // common 네임스페이스에서 번역 찾기
+    const commonTranslations = translationSource.common as any;
+    if (commonTranslations) {
+      const keys = key.split('.');
+      let value: any = commonTranslations;
+      
+      for (const k of keys) {
+        value = value?.[k];
+      }
+      
+      if (value) {
+        return value;
+      }
+    }
+    
+    return key;
+  };
 
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;
@@ -66,44 +107,33 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
   };
 
   return (
-    <div 
-      className="backdrop-blur-xl border-t p-6 relative"
-      style={{
-        backgroundColor: 'var(--surface-primary)',
-        borderColor: 'var(--border-primary)'
-      }}
-    >
-      {/* Quick Emoji Bar */}
-      {showEmojiPicker && (
-        <div className="mb-4 p-3 rounded-2xl border backdrop-blur-sm"
-             style={{
-               backgroundColor: 'var(--surface-secondary)',
-               borderColor: 'var(--border-secondary)'
-             }}>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {quickEmojis.map((emoji, index) => (
-              <button
-                key={index}
-                onClick={() => handleEmojiClick(emoji)}
-                className="w-10 h-10 text-xl hover:scale-125 transition-transform duration-200 cursor-pointer rounded-lg hover:bg-white/10"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="flex items-end space-x-4">
-        {/* Input Container */}
-        <div className="flex-1 relative">
+    <div className="p-4 border-t" style={{ backgroundColor: 'var(--surface-primary)', borderColor: 'var(--border-primary)' }}>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Emoji Picker */}
+        {showEmojiPicker && (
           <div 
-            className="relative rounded-2xl border backdrop-blur-sm shadow-lg"
-            style={{
-              backgroundColor: 'var(--input-bg)',
-              borderColor: 'var(--border-secondary)'
-            }}
+            className="p-3 rounded-lg border"
+            style={{ backgroundColor: 'var(--surface-secondary)', borderColor: 'var(--border-secondary)' }}
           >
+            <div className="grid grid-cols-8 gap-2">
+              {quickEmojis.map((emoji, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleEmojiClick(emoji)}
+                  className="p-2 text-xl hover:bg-gray-100 rounded transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Input Area */}
+        <div className="flex items-end space-x-3">
+          <div className="flex-1">
             <textarea
               ref={textareaRef}
               value={message}
@@ -111,56 +141,43 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
               onKeyDown={handleKeyDown}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
-              placeholder="메시지를 입력하세요... (Enter: 전송, Shift+Enter: 줄바꿈)"
-              className="w-full px-6 py-4 pr-24 text-sm bg-transparent border-0 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder-opacity-70"
+              placeholder={t('messagePlaceholder')}
+              className="w-full px-4 py-3 rounded-2xl resize-none border focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
               style={{
+                backgroundColor: 'var(--input-bg)',
+                borderColor: 'var(--input-border)',
                 color: 'var(--text-primary)',
-                minHeight: '56px',
-                maxHeight: '120px'
+                minHeight: '44px'
               }}
               rows={1}
+              maxLength={500}
             />
-            
-            {/* Input Actions */}
-            <div className="absolute right-3 bottom-3 flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                  showEmojiPicker ? 'bg-indigo-500 text-white scale-110' : 'hover:bg-white/10'
-                }`}
-                style={{
-                  color: showEmojiPicker ? '#ffffff' : 'var(--text-tertiary)'
-                }}
-                title="이모지"
-              >
-                <i className="ri-emotion-line text-lg"></i>
-              </button>
-              
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-white/10"
-                style={{ color: 'var(--text-tertiary)' }}
-                title="파일 첨부"
-              >
-                <i className="ri-attachment-line text-lg"></i>
-              </button>
-            </div>
           </div>
+          
+          {/* Emoji Button */}
+          <button
+            type="button"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="p-3 rounded-2xl transition-colors"
+            style={{ 
+              backgroundColor: 'var(--surface-secondary)',
+              color: 'var(--text-secondary)'
+            }}
+            title={t('addEmoji')}
+          >
+            <i className="ri-emotion-line text-lg" />
+          </button>
+          
+          {/* Send Button */}
+          <button
+            type="submit"
+            disabled={!message.trim() || isComposing}
+            className="p-3 rounded-2xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title={t('sendMessage')}
+          >
+            <i className="ri-send-plane-fill text-lg" />
+          </button>
         </div>
-        
-        {/* Send Button */}
-        <button
-          type="submit"
-          disabled={!message.trim() || isComposing}
-          className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 cursor-pointer shadow-lg ${
-            message.trim() && !isComposing
-              ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white transform hover:scale-110 shadow-indigo-500/25'
-              : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
-          } whitespace-nowrap`}
-        >
-          <i className={`${message.trim() && !isComposing ? 'ri-send-plane-fill' : 'ri-send-plane-line'} text-xl`}></i>
-        </button>
       </form>
       
       {/* Input Helper */}
@@ -171,15 +188,15 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
         <div className="flex items-center justify-center space-x-4">
           <span className="flex items-center">
             <i className="ri-corner-down-left-line mr-1"></i>
-            Enter로 전송
+            {t('enterToSend')}
           </span>
           <span className="flex items-center">
             <i className="ri-corner-down-right-line mr-1"></i>
-            Shift+Enter로 줄바꿈
+            {t('shiftEnterForNewLine')}
           </span>
           <span className="flex items-center">
             <i className="ri-translate-2 mr-1 text-indigo-500"></i>
-            길게 눌러서 번역
+            {t('hoverToTranslate')}
           </span>
         </div>
       </div>

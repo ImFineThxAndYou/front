@@ -10,6 +10,7 @@ const navItems = [
   { href: '/chat', icon: 'ri-chat-3-line', activeIcon: 'ri-chat-3-fill', key: 'chat' },
   { href: '/explore', icon: 'ri-compass-line', activeIcon: 'ri-compass-fill', key: 'explore' },
   { href: '/wordbook', icon: 'ri-book-open-line', activeIcon: 'ri-book-open-fill', key: 'wordbook' },
+  { href: '/quiz', icon: 'ri-question-line', activeIcon: 'ri-question-fill', key: 'quiz' },
   { href: '/me', icon: 'ri-user-line', activeIcon: 'ri-user-fill', key: 'me' }
 ];
 

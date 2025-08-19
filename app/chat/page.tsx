@@ -6,20 +6,75 @@ import MainLayout from '../components/layout/MainLayout';
 import ChatSidebar from '../components/chat/ChatSidebar';
 import ChatRoom from '../components/chat/ChatRoom';
 import ChatEmptyState from '../components/chat/ChatEmptyState';
+import { ChatRoomSummaryResponse } from '../../lib/types/chat';
+import { chatService } from '../../lib/services/chatService';
+import { useAuthStore } from '../../lib/stores/auth';
+import { useChatStore } from '../../lib/stores/chat';
 import { useChat } from '../../lib/hooks/useChat';
 
+type ViewMode = 'rooms' | 'requests';
+
 export default function ChatPage() {
-  const { currentChatRoom, isConnected } = useChat();
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  
+  const [selectedRoom, setSelectedRoom] = useState<ChatRoomSummaryResponse | null>(null);
+  const [rooms, setRooms] = useState<ChatRoomSummaryResponse[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>('rooms');
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuthStore();
+  const { setCurrentChatRoom } = useChatStore();
+  const { connectWebSocket, isConnected, isConnecting } = useChat();
 
+  // 채팅방 목록 로드
+  const loadRooms = async () => {
+    try {
+      setLoading(true);
+      const data = await chatService.getMyChatRooms();
+      setRooms(data);
+    } catch (error) {
+      console.error('채팅방 목록 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // API에서 채팅방 데이터 로드
-  const { loadChatRooms } = useChat();
-  
+  // 채팅 페이지 진입 시 WebSocket 연결 보장
   useEffect(() => {
-    loadChatRooms();
-  }, [loadChatRooms]);
+    const ensureWebSocketConnection = async () => {
+      if (user && !isConnected && !isConnecting) {
+        console.log('📡 ChatPage: WebSocket 연결 보장 시도');
+        await connectWebSocket();
+      }
+    };
+
+    ensureWebSocketConnection();
+    loadRooms();
+  }, [user, isConnected, isConnecting, connectWebSocket]);
+
+  const handleRoomSelect = (room: ChatRoomSummaryResponse) => {
+    console.log('🎯 ChatPage: 채팅방 선택됨:', room.chatRoomId);
+    setSelectedRoom(room);
+    // useChatStore와 동기화 - 즉시 currentChatRoom 설정
+    setCurrentChatRoom(room.chatRoomId);
+  };
+
+  const handleBackToRooms = () => {
+    console.log('🔙 ChatPage: 채팅방 목록으로 돌아감');
+    setSelectedRoom(null);
+    // useChatStore와 동기화 - currentChatRoom 초기화
+    setCurrentChatRoom(null);
+  };
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    console.log('🔄 ChatPage: 보기 모드 변경:', mode);
+    setViewMode(mode);
+    setSelectedRoom(null);
+    // useChatStore와 동기화 - currentChatRoom 초기화
+    setCurrentChatRoom(null);
+  };
+
+  const handleRequestUpdate = () => {
+    // 요청 상태가 변경되면 채팅방 목록 새로고침
+    loadRooms();
+  };
 
   return (
     <MainLayout>
@@ -44,8 +99,13 @@ export default function ChatPage() {
           }}
         >
           <ChatSidebar 
-            selectedRoomId={selectedRoomId}
-            onRoomSelect={setSelectedRoomId}
+            rooms={rooms}
+            selectedRoom={selectedRoom}
+            viewMode={viewMode}
+            onRoomSelect={handleRoomSelect}
+            onViewModeChange={handleViewModeChange}
+            onRequestUpdate={handleRequestUpdate}
+            loading={loading}
           />
         </div>
 
@@ -61,8 +121,13 @@ export default function ChatPage() {
             }}
           />
           
-          {selectedRoomId ? (
-            <ChatRoom roomId={selectedRoomId} />
+          {selectedRoom ? (
+            <ChatRoom 
+              key={selectedRoom.chatRoomId}
+              roomUuid={selectedRoom.chatRoomId}
+              opponentName={selectedRoom.opponentName}
+              onBack={handleBackToRooms}
+            />
           ) : (
             <div className="flex-1 flex items-center justify-center relative z-10 h-full">
               <div 

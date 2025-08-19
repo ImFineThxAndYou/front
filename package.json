@@ -10,6 +10,7 @@
   "dependencies": {
     "@react-google-maps/api": "^2.19.3",
     "@stomp/stompjs": "^7.1.1",
+    "@types/sockjs-client": "^1.5.4",
     "axios": "^1.11.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -23,6 +24,7 @@
     "react-is": "^19.1.1",
     "recharts": "^3.0.2",
     "sockjs-client": "^1.6.1",
+    "supports-color": "^10.1.0",
     "tailwind-merge": "^3.3.1",
     "zustand": "^4.4.7"
   },

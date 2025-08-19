@@ -1,261 +1,471 @@
 'use client';
 
-import { useState } from 'react';
-import { useTranslation } from '../../../lib/hooks/useTranslation';
+import { useState, useEffect } from 'react';
+import { useUIStore } from '../../../lib/stores/ui';
+import { translations } from '../../../lib/i18n/translations';
+import { dashboardService, DashboardSummary, LearningGrass } from '../../../lib/services/dashboardService';
 
 export default function LearningDashboard() {
-  const { t } = useTranslation(['me', 'common']);
+  const { language } = useUIStore();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // API 데이터 상태
+  const [dashboardData, setDashboardData] = useState<DashboardSummary | null>(null);
+  const [learningGrass, setLearningGrass] = useState<LearningGrass>({});
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Mock data - 실제로는 API에서 가져올 데이터
-  const stats = {
-    totalWords: 1247,
-    mastered: 894,
-    reviewNeeded: 353,
-    studyStreak: 7,
-    weeklyGoal: 87,
-    reviewCompletion: 73
+  // 번역 함수
+  const t = (key: string) => {
+    const currentLang = language || 'ko';
+    const translationSource = translations[currentLang as keyof typeof translations];
+    
+    // me 네임스페이스에서 번역 찾기
+    const meTranslations = translationSource.me as any;
+    if (meTranslations) {
+      const keys = key.split('.');
+      let value: any = meTranslations;
+      
+      for (const k of keys) {
+        value = value?.[k];
+      }
+      
+      if (value) {
+        return value;
+      }
+    }
+    
+    // common 네임스페이스에서 번역 찾기
+    const commonTranslations = translationSource.common as any;
+    if (commonTranslations) {
+      const keys = key.split('.');
+      let value: any = commonTranslations;
+      
+      for (const k of keys) {
+        value = value?.[k];
+      }
+      
+      if (value) {
+        return value;
+      }
+    }
+    
+    return key;
   };
 
-  const weeklyData = [
-    { day: 'Mon', words: 15, chats: 3 },
-    { day: 'Tue', words: 22, chats: 5 },
-    { day: 'Wed', words: 8, chats: 2 },
-    { day: 'Thu', words: 31, chats: 7 },
-    { day: 'Fri', words: 18, chats: 4 },
-    { day: 'Sat', words: 25, chats: 6 },
-    { day: 'Sun', words: 12, chats: 3 }
-  ];
+  // 데이터 로딩
+  useEffect(() => {
+    loadDashboardData();
+  }, [selectedPeriod]);
 
-  const recentActivities = [
-    { type: 'word', content: 'serendipity', time: '2분 전', icon: 'ri-book-line' },
-    { type: 'chat', content: 'Sarah Kim과 대화', time: '5분 전', icon: 'ri-chat-3-line' },
-    { type: 'quiz', content: '퀴즈 완료 (8/10)', time: '1시간 전', icon: 'ri-award-line' },
-    { type: 'word', content: 'ephemeral', time: '2시간 전', icon: 'ri-book-line' },
-    { type: 'chat', content: 'Mike Johnson과 대화', time: '3시간 전', icon: 'ri-chat-3-line' }
-  ];
+  useEffect(() => {
+    loadLearningGrass();
+  }, [selectedYear, selectedPeriod]);
 
-  const quickActions = [
-    { title: '새 단어 추가', description: '채팅에서 단어 저장', icon: 'ri-book-line', color: 'blue' },
-    { title: '퀴즈 시작', description: '오늘의 복습', icon: 'ri-target-line', color: 'green' },
-    { title: '파트너 찾기', description: '새로운 친구', icon: 'ri-user-line', color: 'purple' },
-    { title: '학습 통계', description: '상세 분석', icon: 'ri-bar-chart-line', color: 'orange' }
-  ];
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await dashboardService.getDashboardSummary('Asia/Seoul', selectedPeriod);
+      setDashboardData(data);
+    } catch (err) {
+      console.error('대시보드 데이터 로딩 실패:', err);
+      setError('데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            학습 대시보드
-          </h1>
-          <p className="text-lg mt-2" style={{ color: 'var(--text-secondary)' }}>
-            오늘의 학습 현황과 주간 통계를 확인하세요
+  const loadLearningGrass = async () => {
+    try {
+      const data = await dashboardService.getLearningGrass(selectedYear, 'Asia/Seoul', selectedPeriod);
+      setLearningGrass(data);
+    } catch (err) {
+      console.error('학습 잔디 데이터 로딩 실패:', err);
+    }
+  };
+
+  // GitHub 스타일 잔디 생성
+  const generateGitHubStyleGrass = () => {
+    const weeks = [];
+    const startDate = new Date(selectedYear, 0, 1);
+    const endDate = new Date(selectedYear, 11, 31);
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      const count = learningGrass[dateStr] || 0;
+      
+      // GitHub 스타일 색상 (값이 없어도 회색으로 표시)
+      let color = '#ebedf0'; // 기본 회색
+      if (count > 0) {
+        if (count <= 3) color = '#9be9a8'; // 연한 초록
+        else if (count <= 6) color = '#40c463'; // 초록
+        else if (count <= 9) color = '#30a14e'; // 진한 초록
+        else color = '#216e39'; // 매우 진한 초록
+      }
+      
+      weeks.push({
+        date: dateStr,
+        count,
+        color
+      });
+    }
+    
+    return weeks;
+  };
+
+  // 학습 성과 그래프 데이터 준비
+  const prepareScoreChartData = () => {
+    if (!dashboardData?.scoreSeries) return [];
+    
+    const now = new Date();
+    let days = 7; // 주간 기본값
+    
+    if (selectedPeriod === 'month') {
+      days = 30;
+    }
+    
+    // 최근 N일 데이터만 사용
+    return dashboardData.scoreSeries.slice(0, days).reverse();
+  };
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>
+            {t('common.loading')}
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <p className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
+            {t('common.error')}
+          </p>
+          <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
+            {error}
+          </p>
+          <button
+            onClick={loadDashboardData}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            {t('common.retry')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 데이터가 없는 경우
+  if (!dashboardData) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="text-gray-400 text-6xl mb-4">📊</div>
+          <p className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
+            {t('dashboard.noData.title')}
+          </p>
+          <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
+            {t('dashboard.noData.description')}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const grassData = generateGitHubStyleGrass();
+  const scoreData = prepareScoreChartData();
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          {t('dashboard.title')}
+        </h1>
         
-        {/* Period Selector */}
-        <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg p-1 border">
-          {['week', 'month', 'year'].map((period) => (
-            <button
-              key={period}
-              onClick={() => setSelectedPeriod(period)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                selectedPeriod === period
-                  ? 'bg-blue-500 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
-              {period === 'week' ? '주간' : period === 'month' ? '월간' : '연간'}
-            </button>
-          ))}
+        {/* 기간 선택 */}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setSelectedPeriod('week')}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+              selectedPeriod === 'week'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {t('dashboard.period.week')}
+          </button>
+          <button
+            onClick={() => setSelectedPeriod('month')}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+              selectedPeriod === 'month'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {t('dashboard.period.month')}
+          </button>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all">
+      {/* 통계 카드들 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 총 단어 개수 */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border" style={{ borderColor: 'var(--border-secondary)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">총 단어</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalWords}</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {t('dashboard.totalWords')}
+              </p>
+              <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                {dashboardData.totalWords.toLocaleString()}
+              </p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <i className="ri-book-line text-2xl text-blue-600 dark:text-blue-400"></i>
+            <div className="p-2 rounded-full" style={{ backgroundColor: 'var(--accent-primary-alpha)' }}>
+              <i className="ri-book-open-line text-lg" style={{ color: 'var(--accent-primary)' }}></i>
             </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm text-green-600 dark:text-green-400">
-            <i className="ri-trending-up-line mr-1"></i>
-            +12% 이번 주
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all">
+        {/* 연속 학습일 */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border" style={{ borderColor: 'var(--border-secondary)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">마스터</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.mastered}</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {t('dashboard.learningStreak')}
+              </p>
+              <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                {dashboardData.learningStreakDays}일
+              </p>
             </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <i className="ri-award-line text-2xl text-green-600 dark:text-green-400"></i>
+            <div className="p-2 rounded-full" style={{ backgroundColor: 'var(--accent-primary-alpha)' }}>
+              <i className="ri-fire-line text-lg" style={{ color: 'var(--accent-primary)' }}></i>
             </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm text-green-600 dark:text-green-400">
-            <i className="ri-trending-up-line mr-1"></i>
-            +8% 이번 주
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all">
+        {/* 복습 필요 날짜 */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border" style={{ borderColor: 'var(--border-secondary)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">연속 학습</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.studyStreak}일</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {t('dashboard.reviewNeeded')}
+              </p>
+              <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                {dashboardData.reviewNeededDays}일
+              </p>
             </div>
-            <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <i className="ri-flashlight-line text-2xl text-orange-600 dark:text-orange-400"></i>
+            <div className="p-2 rounded-full" style={{ backgroundColor: 'var(--accent-primary-alpha)' }}>
+              <i className="ri-refresh-line text-lg" style={{ color: 'var(--accent-primary)' }}></i>
             </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm text-orange-600 dark:text-orange-400">
-            <i className="ri-target-line mr-1"></i>
-            목표: 30일
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all">
+        {/* 격려 메시지 */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border" style={{ borderColor: 'var(--border-secondary)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">복습 필요</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.reviewNeeded}</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {t('dashboard.encouragement')}
+              </p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {dashboardData.encouragementMessage}
+              </p>
             </div>
-            <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <i className="ri-time-line text-2xl text-red-600 dark:text-red-400"></i>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center text-sm text-red-600 dark:text-red-400">
-            <i className="ri-target-line mr-1"></i>
-            오늘 복습 권장
-          </div>
-        </div>
-      </div>
-
-      {/* Charts and Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Weekly Chart */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">주간 학습량</h3>
-            <div className="flex items-center space-x-4 text-sm">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                <span className="text-gray-600 dark:text-gray-400">단어</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                <span className="text-gray-600 dark:text-gray-400">채팅</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="h-48 flex items-end justify-between space-x-2">
-            {weeklyData.map((day, index) => (
-              <div key={day.day} className="flex-1 flex flex-col items-center">
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-t-sm relative">
-                  <div 
-                    className="bg-blue-500 rounded-t-sm transition-all duration-500"
-                    style={{ height: `${(day.words / 31) * 100}%` }}
-                  ></div>
-                  <div 
-                    className="bg-green-500 rounded-t-sm transition-all duration-500 absolute bottom-0 w-full"
-                    style={{ height: `${(day.chats / 7) * 100}%` }}
-                  ></div>
-                </div>
-                <span className="text-xs mt-2 text-gray-600 dark:text-gray-400">{day.day}</span>
-                <span className="text-xs font-medium text-gray-900 dark:text-white">{day.words}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Progress Bars */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">목표 달성률</h3>
-          
-          <div className="space-y-6">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">주간 목표</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">{stats.weeklyGoal}%</span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                <div 
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-1000"
-                  style={{ width: `${stats.weeklyGoal}%` }}
-                ></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">복습 완료</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">{stats.reviewCompletion}%</span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                <div 
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-1000"
-                  style={{ width: `${stats.reviewCompletion}%` }}
-                ></div>
-              </div>
+            <div className="p-2 rounded-full" style={{ backgroundColor: 'var(--accent-primary-alpha)' }}>
+              <i className="ri-heart-line text-lg" style={{ color: 'var(--accent-primary)' }}></i>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions and Recent Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Quick Actions */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">빠른 작업</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {quickActions.map((action, index) => (
-              <button
-                key={index}
-                className="p-4 rounded-lg border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all text-left group hover:scale-105"
-              >
-                <div className={`w-10 h-10 rounded-lg bg-${action.color}-100 dark:bg-${action.color}-900/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                  <i className={`${action.icon} text-xl text-${action.color}-600 dark:text-${action.color}-400`}></i>
+      {/* 메인 콘텐츠 영역 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 왼쪽: 틀린 단어 목록 */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl shadow-sm border h-full" style={{ borderColor: 'var(--border-secondary)' }}>
+            <div className="p-4 border-b" style={{ borderColor: 'var(--border-secondary)' }}>
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {t('dashboard.wrongAnswers.title')}
+              </h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                {t('dashboard.wrongAnswers.description')}
+              </p>
+            </div>
+            
+            <div className="p-4">
+              {dashboardData.wrongAnswerNotes && dashboardData.wrongAnswerNotes.length > 0 ? (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {dashboardData.wrongAnswerNotes.slice(0, 8).map((wrongAnswer, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded-lg border"
+                      style={{ 
+                        backgroundColor: 'var(--surface-secondary)',
+                        borderColor: 'var(--border-secondary)'
+                      }}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+                            <i className="ri-close-line text-red-500 text-xs"></i>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                              {wrongAnswer.word}
+                            </p>
+                            <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                              {wrongAnswer.meaning}
+                            </p>
+                            <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 mt-1">
+                              {wrongAnswer.pos}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        className="p-1 rounded-lg hover:bg-gray-100 transition-colors ml-2"
+                        style={{ color: 'var(--text-secondary)' }}
+                        title={t('dashboard.wrongAnswers.review')}
+                      >
+                        <i className="ri-refresh-line text-sm"></i>
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <h4 className="font-medium text-gray-900 dark:text-white text-sm mb-1">
-                  {action.title}
-                </h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  {action.description}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Activities */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">최근 활동</h3>
-          <div className="space-y-4">
-            {recentActivities.map((activity, index) => (
-              <div key={index} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                  <i className={`${activity.icon} text-lg text-gray-600 dark:text-gray-400`}></i>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {activity.content}
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-green-500 text-3xl mb-3">🎉</div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {t('dashboard.wrongAnswers.noData.title')}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {activity.time}
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    {t('dashboard.wrongAnswers.noData.description')}
                   </p>
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 오른쪽: 학습 잔디와 학습 성과 */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* 학습 잔디 */}
+          <div className="bg-white rounded-xl shadow-sm border" style={{ borderColor: 'var(--border-secondary)' }}>
+            <div className="p-4 border-b" style={{ borderColor: 'var(--border-secondary)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {t('dashboard.learningGrass.title')}
+                  </h2>
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    {t('dashboard.learningGrass.description')}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setSelectedYear(prev => prev - 1)}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <i className="ri-arrow-left-s-line"></i>
+                  </button>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {selectedYear}
+                  </span>
+                  <button
+                    onClick={() => setSelectedYear(prev => prev + 1)}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <i className="ri-arrow-right-s-line"></i>
+                  </button>
+                </div>
               </div>
-            ))}
+            </div>
+            
+            <div className="p-4">
+              <div className="grid grid-cols-53 gap-1">
+                {grassData.map((day, index) => (
+                  <div
+                    key={index}
+                    className="w-2 h-2 rounded-sm"
+                    style={{
+                      backgroundColor: day.color,
+                      border: '1px solid var(--border-secondary)'
+                    }}
+                    title={`${day.date}: ${day.count}개 단어`}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center justify-center space-x-4 mt-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                <span>Less</span>
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#ebedf0' }}></div>
+                  <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#9be9a8' }}></div>
+                  <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#40c463' }}></div>
+                  <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#30a14e' }}></div>
+                  <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#216e39' }}></div>
+                </div>
+                <span>More</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 학습 성과 */}
+          <div className="bg-white rounded-xl shadow-sm border" style={{ borderColor: 'var(--border-secondary)' }}>
+            <div className="p-4 border-b" style={{ borderColor: 'var(--border-secondary)' }}>
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {t('dashboard.scoreChart.title')}
+              </h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                {t('dashboard.scoreChart.description')} ({selectedPeriod === 'week' ? '최근 7일' : '최근 30일'})
+              </p>
+            </div>
+            
+            <div className="p-4">
+              {scoreData.length > 0 ? (
+                <div className="h-48 flex items-end space-x-1">
+                  {scoreData.map((score, index) => (
+                    <div key={index} className="flex-1 flex flex-col items-center">
+                      <div
+                        className="w-full rounded-t min-h-[4px]"
+                        style={{
+                          height: `${Math.max(score.score, 4)}%`,
+                          backgroundColor: 'var(--accent-primary)'
+                        }}
+                        title={`${score.submittedAtUtc}: ${score.score}점`}
+                      />
+                      <span className="text-xs mt-1 text-center" style={{ color: 'var(--text-secondary)' }}>
+                        {new Date(score.submittedAtUtc).toLocaleDateString('ko-KR', { 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-400 text-3xl mb-3">📊</div>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {t('dashboard.scoreChart.noData')}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

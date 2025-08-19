@@ -1,250 +1,292 @@
-import SockJS from 'sockjs-client';
 import { Client, Message, StompSubscription } from '@stomp/stompjs';
-import { ChatMessage, ChatEnterDTO } from '../types/chat';
-import { getCurrentInstant } from '../utils/dateUtils';
+import SockJS from 'sockjs-client';
+import { ChatMessageResponse, CreateChatMessageRequest, ChatEnterDTO } from '../types/chat';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-
-class WebSocketManager {
-  private stompClient: Client | null = null;
+export class WebSocketManager {
+  private client: Client | null = null;
+  private currentChatRoomId: string | null = null;
+  private messageHandlers: ((message: ChatMessageResponse) => void)[] = [];
+  private connectionHandlers: ((connected: boolean) => void)[] = [];
   private subscriptions: Map<string, StompSubscription> = new Map();
-  private messageCallbacks: Map<string, (message: ChatMessage) => void> = new Map();
   private isConnecting: boolean = false;
-  private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 5;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private connectionStateCallback: ((connected: boolean, error?: string) => void) | null = null;
 
-  // 싱글톤 패턴
-  private static instance: WebSocketManager;
-  
-  public static getInstance(): WebSocketManager {
-    if (!WebSocketManager.instance) {
-      WebSocketManager.instance = new WebSocketManager();
-    }
-    return WebSocketManager.instance;
+  constructor() {
+    // 생성자에서 자동 연결하지 않음
   }
 
-  private constructor() {}
-
+  // STOMP 클라이언트 초기화 및 연결
   async connect(): Promise<void> {
-    if (this.stompClient?.connected || this.isConnecting) {
-      console.log('🔗 WebSocket 이미 연결 중이거나 연결됨');
+    if (this.client?.connected || this.isConnecting) {
+      console.log('🔍 WebSocket: 이미 연결 중이거나 연결됨');
       return;
     }
 
     this.isConnecting = true;
-    console.log('🔗 WebSocket 연결 시작');
+    console.log('🔗 WebSocket: 연결 시도 시작');
 
     try {
-      // SockJS 연결
-      const socket = new SockJS(`${API_BASE_URL}/ws-chatroom`);
-      
-      // STOMP 클라이언트 생성
-      this.stompClient = new Client({
-        webSocketFactory: () => socket,
-        debug: (str) => {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔗 STOMP Debug:', str);
-          }
+      // 인증 토큰 가져오기
+      const token = localStorage.getItem('accessToken');
+      console.log('🔑 WebSocket: 인증 토큰 확인:', token ? '있음' : '없음');
+      console.log('🔑 토큰 길이:', token?.length);
+      console.log('🔑 토큰 시작 부분:', token?.substring(0, 20) + '...');
+
+      this.client = new Client({
+        webSocketFactory: () => {
+          // SockJS에 인증 헤더 추가
+          const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:8080';
+          const sock = new SockJS(`${wsBaseUrl}/ws-chatroom`, null, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
+          // 연결 시 토큰을 헤더에 추가
+          sock.onopen = () => {
+            console.log('🔗 SockJS 연결 성공');
+          };
+          return sock;
+        },
+        connectHeaders: token ? { 'Authorization': `Bearer ${token}` } : {},
+        debug: function (str) {
+          console.log('STOMP Debug:', str);
         },
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
       });
 
-      // 연결 성공 콜백
-      this.stompClient.onConnect = () => {
-        console.log('✅ WebSocket 연결 성공');
+      // 연결 상태 콜백 설정
+      this.client.onConnect = () => {
+        console.log('✅ STOMP WebSocket 연결 성공');
+        console.log('🔗 연결된 클라이언트 정보:', {
+          connected: this.client?.connected,
+          state: this.client?.state,
+          url: this.client?.webSocket?.url
+        });
         this.isConnecting = false;
-        this.reconnectAttempts = 0;
-        
-        // 기존 구독 복원
-        this.restoreSubscriptions();
+        this.notifyConnectionChange(true);
+        if (this.connectionStateCallback) {
+          this.connectionStateCallback(true);
+        }
       };
 
-      // 연결 끊김 콜백
-      this.stompClient.onDisconnect = () => {
-        console.log('🔌 WebSocket 연결 끊김');
+      this.client.onDisconnect = () => {
+        console.log('🔌 STOMP WebSocket 연결 해제');
         this.isConnecting = false;
-        this.subscriptions.clear();
+        this.notifyConnectionChange(false);
+        if (this.connectionStateCallback) {
+          this.connectionStateCallback(false);
+        }
       };
 
-      // 에러 콜백
-      this.stompClient.onStompError = (frame) => {
-        console.error('❌ STOMP 에러:', frame);
+      this.client.onStompError = (frame) => {
+        console.error('❌ STOMP 오류:', frame);
         this.isConnecting = false;
-        this.handleReconnect();
+        this.notifyConnectionChange(false);
+        if (this.connectionStateCallback) {
+          this.connectionStateCallback(false, 'STOMP 오류가 발생했습니다.');
+        }
       };
 
-      // 연결 시작
-      await this.stompClient.activate();
+      this.client.onWebSocketError = (error) => {
+        console.error('❌ WebSocket 연결 오류:', error);
+        this.isConnecting = false;
+        this.notifyConnectionChange(false);
+        if (this.connectionStateCallback) {
+          this.connectionStateCallback(false, 'WebSocket 연결 오류가 발생했습니다.');
+        }
+      };
 
+      await this.client.activate();
     } catch (error) {
-      console.error('❌ WebSocket 연결 실패:', error);
+      console.error('❌ STOMP 연결 실패:', error);
       this.isConnecting = false;
-      this.handleReconnect();
+      this.notifyConnectionChange(false);
+      if (this.connectionStateCallback) {
+        this.connectionStateCallback(false, 'STOMP 연결 실패');
+      }
       throw error;
     }
   }
 
-  disconnect(): void {
-    console.log('🔌 WebSocket 연결 해제');
-    
-    // 재연결 타이머 정리
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-
-    // 구독 해제
-    this.subscriptions.forEach((subscription) => {
-      try {
-        subscription.unsubscribe();
-      } catch (error) {
-        console.error('❌ 구독 해제 오류:', error);
-      }
-    });
-    this.subscriptions.clear();
-    this.messageCallbacks.clear();
-
-    // STOMP 클라이언트 비활성화
-    if (this.stompClient?.active) {
-      try {
-        this.stompClient.deactivate();
-      } catch (error) {
-        console.error('❌ STOMP 클라이언트 비활성화 오류:', error);
-      }
-    }
-
-    this.stompClient = null;
-    this.isConnecting = false;
-    this.reconnectAttempts = 0;
+  // 연결 상태 콜백 설정
+  setConnectionStateCallback(callback: (connected: boolean, error?: string) => void): void {
+    this.connectionStateCallback = callback;
   }
 
-  subscribe(chatRoomId: string, callback: (message: ChatMessage) => void): void {
-    if (!this.stompClient?.connected) {
-      console.log('⚠️ WebSocket이 연결되지 않음 - 구독 대기');
-      this.messageCallbacks.set(chatRoomId, callback);
-      return;
+  // 연결 해제
+  disconnect(): void {
+    if (this.client) {
+      this.client.deactivate();
+      this.client = null;
+    }
+    this.currentChatRoomId = null;
+    this.subscriptions.clear();
+    this.notifyConnectionChange(false);
+    if (this.connectionStateCallback) {
+      this.connectionStateCallback(false);
+    }
+  }
+
+  // 채팅방 입장 (웹소켓 연결 포함)
+  async enterChatRoom(chatRoomId: string): Promise<void> {
+    if (this.currentChatRoomId === chatRoomId) {
+      console.log('🔍 이미 해당 채팅방에 있음:', chatRoomId);
+      return; // 이미 해당 채팅방에 있음
+    }
+
+    // 연결이 안되어 있으면 연결
+    if (!this.client?.connected) {
+      console.log('🔗 WebSocket 연결 시도...');
+      await this.connect();
+    }
+
+    // 이전 채팅방에서 나가기
+    if (this.currentChatRoomId) {
+      console.log('🚪 이전 채팅방에서 나가기:', this.currentChatRoomId);
+      this.leaveChatRoom();
     }
 
     try {
-      const destination = `/topic/chatroom/${chatRoomId}`;
-      console.log(`📡 채팅방 구독: ${destination}`);
+      // 채팅방 입장 메시지 전송 (백엔드 ChatEnterDTO 구조에 맞춤)
+      const enterMessage: ChatEnterDTO = {
+        chatRoomId
+      };
 
-      const subscription = this.stompClient.subscribe(destination, (message: Message) => {
+      console.log('📤 채팅방 입장 요청 전송:', enterMessage);
+      const enterBody = JSON.stringify(enterMessage);
+      console.log('📤 실제 전송되는 JSON:', enterBody);
+      
+      this.client?.publish({
+        destination: '/app/chat.enter',
+        body: enterBody
+      });
+
+      // 메시지 구독
+      console.log('📡 채팅방 구독 시작:', chatRoomId);
+      const subscription = this.client?.subscribe(`/topic/chatroom/${chatRoomId}`, (message: Message) => {
         try {
-          const chatMessage: ChatMessage = JSON.parse(message.body);
-          console.log('📨 메시지 수신:', chatMessage);
-          callback(chatMessage);
+          const chatMessage: ChatMessageResponse = JSON.parse(message.body);
+          console.log('📨 메시지 수신:', {
+            id: chatMessage.id,
+            senderName: chatMessage.senderName,
+            content: chatMessage.content?.substring(0, 50) + (chatMessage.content?.length > 50 ? '...' : ''),
+            messageTime: chatMessage.messageTime
+          });
+          
+          // ChatMessage 형식으로 변환하여 전달
+          const convertedMessage = {
+            id: chatMessage.id,
+            chatRoomUuid: chatMessage.chatRoomUuid,
+            sender: chatMessage.senderName, // senderName을 sender로 매핑
+            senderId: chatMessage.senderId || '', // senderId가 없을 경우 빈 문자열
+            senderName: chatMessage.senderName, // 추가 정보
+            content: chatMessage.content,
+            messageTime: chatMessage.messageTime,
+            chatMessageStatus: (chatMessage.status || 'UNREAD') as 'READ' | 'UNREAD'
+          };
+          
+          console.log('🔄 변환된 메시지:', convertedMessage);
+          console.log('🔔 notifyMessageReceived 호출 중...');
+          this.notifyMessageReceived(convertedMessage);
+          console.log('✅ notifyMessageReceived 호출 완료');
         } catch (error) {
-          console.error('❌ 메시지 파싱 오류:', error);
+          console.error('❌ 메시지 파싱 오류:', error, 'Raw message:', message.body);
         }
       });
 
-      this.subscriptions.set(chatRoomId, subscription);
-      this.messageCallbacks.set(chatRoomId, callback);
-
-    } catch (error) {
-      console.error('❌ 채팅방 구독 실패:', error);
-    }
-  }
-
-  unsubscribe(chatRoomId: string): void {
-    const subscription = this.subscriptions.get(chatRoomId);
-    if (subscription) {
-      try {
-        subscription.unsubscribe();
-        console.log(`📡 채팅방 구독 해제: ${chatRoomId}`);
-      } catch (error) {
-        console.error('❌ 구독 해제 오류:', error);
+      if (subscription) {
+        this.subscriptions.set(chatRoomId, subscription);
       }
-      this.subscriptions.delete(chatRoomId);
-    }
-    this.messageCallbacks.delete(chatRoomId);
-  }
 
-  sendMessage(chatRoomId: string, content: string, senderName: string): void {
-    if (!this.stompClient?.connected) {
-      console.error('❌ WebSocket이 연결되지 않음');
-      return;
-    }
-
-    try {
-      const message = {
-        chatRoomUuid: chatRoomId,
-        sender: senderName,
-        content: content,
-        messageTime: getCurrentInstant(),
-        chatMessageStatus: 'UNREAD'
-      };
-
-      this.stompClient.publish({
-        destination: '/app/chat.send',
-        body: JSON.stringify(message)
-      });
-
-      console.log('📤 메시지 전송:', message);
-    } catch (error) {
-      console.error('❌ 메시지 전송 실패:', error);
-    }
-  }
-
-  enterChatRoom(membername: string, chatRoomId: string): void {
-    if (!this.stompClient?.connected) {
-      console.error('❌ WebSocket이 연결되지 않음');
-      return;
-    }
-
-    try {
-      const enterDTO: ChatEnterDTO = {
-        membername: membername,
-        chatRoomId: chatRoomId
-      };
-
-      this.stompClient.publish({
-        destination: '/app/chat.enter',
-        body: JSON.stringify(enterDTO)
-      });
-
-      console.log('🚪 채팅방 입장:', enterDTO);
+      this.currentChatRoomId = chatRoomId;
+      console.log('✅ 채팅방 입장 성공:', chatRoomId);
     } catch (error) {
       console.error('❌ 채팅방 입장 실패:', error);
+      throw error;
     }
   }
 
-  private restoreSubscriptions(): void {
-    console.log('🔄 기존 구독 복원');
-    this.messageCallbacks.forEach((callback, chatRoomId) => {
-      this.subscribe(chatRoomId, callback);
+  // 채팅방 나가기
+  leaveChatRoom(): void {
+    if (this.currentChatRoomId) {
+      const subscription = this.subscriptions.get(this.currentChatRoomId);
+      if (subscription) {
+        subscription.unsubscribe();
+        this.subscriptions.delete(this.currentChatRoomId);
+      }
+      this.currentChatRoomId = null;
+      console.log('🚪 채팅방 나가기 완료');
+    }
+  }
+
+  // 메시지 전송
+  sendMessage(chatRoomId: string, content: string): void {
+    if (!this.client?.connected) {
+      console.error('WebSocket이 연결되지 않았습니다.');
+      return;
+    }
+
+    // 백엔드 CreateChatMessageRequest 구조에 맞춤
+    const message: CreateChatMessageRequest = {
+      chatRoomUuid: chatRoomId,
+      senderId: null, // 서버에서 자동으로 설정 (null로 보내면 서버가 인증된 사용자 ID로 설정)
+      content: content
+    };
+
+    console.log('📤 메시지 전송:', message);
+    const messageBody = JSON.stringify(message);
+    console.log('📤 실제 전송되는 JSON:', messageBody);
+    
+    this.client.publish({
+      destination: '/app/chat.send',
+      body: messageBody
     });
   }
 
-  private handleReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('❌ 최대 재연결 시도 횟수 초과');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-    
-    console.log(`🔄 ${delay}ms 후 재연결 시도 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-    
-    this.reconnectTimeout = setTimeout(() => {
-      this.connect();
-    }, delay);
+  // 메시지 수신 핸들러 등록
+  onMessageReceived(handler: (message: ChatMessageResponse) => void): void {
+    this.messageHandlers.push(handler);
   }
 
+  // 연결 상태 변경 핸들러 등록
+  onConnectionChange(handler: (connected: boolean) => void): void {
+    this.connectionHandlers.push(handler);
+  }
+
+  // 핸들러 제거
+  removeMessageHandler(handler: (message: ChatMessageResponse) => void): void {
+    this.messageHandlers = this.messageHandlers.filter(h => h !== handler);
+  }
+
+  removeConnectionHandler(handler: (connected: boolean) => void): void {
+    this.connectionHandlers = this.connectionHandlers.filter(h => h !== handler);
+  }
+
+  private notifyMessageReceived(message: ChatMessageResponse): void {
+    this.messageHandlers.forEach(handler => handler(message));
+  }
+
+  private notifyConnectionChange(connected: boolean): void {
+    this.connectionHandlers.forEach(handler => handler(connected));
+  }
+
+  // 현재 채팅방 ID 반환
+  getCurrentChatRoomId(): string | null {
+    return this.currentChatRoomId;
+  }
+
+  // 연결 상태 확인
   isConnected(): boolean {
-    return this.stompClient?.connected || false;
+    return this.client?.connected || false;
   }
 
-  getConnectionStatus(): 'connected' | 'connecting' | 'disconnected' {
-    if (this.stompClient?.connected) return 'connected';
-    if (this.isConnecting) return 'connecting';
-    return 'disconnected';
+  // 정리
+  dispose(): void {
+    this.disconnect();
+    this.messageHandlers = [];
+    this.connectionHandlers = [];
   }
 }
 
-export const websocketManager = WebSocketManager.getInstance();
+// 싱글톤 인스턴스
+export const websocketManager = new WebSocketManager();

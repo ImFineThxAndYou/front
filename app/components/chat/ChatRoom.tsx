@@ -1,193 +1,317 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  ChatMessageDocumentResponse
+} from '../../../lib/types/chat';
+import { chatService } from '../../../lib/services/chatService';
+import { useAuthStore } from '../../../lib/stores/auth';
 import { useChat } from '../../../lib/hooks/useChat';
-import { useUIStore } from '../../../lib/stores/ui';
+import { useChatStore } from '../../../lib/stores/chat';
+import Avatar from '../ui/Avatar';
+import { formatDistanceToNow } from '../../../lib/utils/dateUtils';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
-import ChatHeader from './ChatHeader';
-import ChatMessage from './ChatMessage';
-import ChatInput from './ChatInput';
 
 interface ChatRoomProps {
-  roomId: string;
+  roomUuid: string;
+  opponentName: string;
+  onBack: () => void;
 }
 
-export default function ChatRoom({ roomId }: ChatRoomProps) {
+export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomProps) {
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const { t } = useTranslation('chat');
-
-  const {
-    currentChatRoom,
-    currentMessages,
+  const { user } = useAuthStore();
+  const { 
+    isConnected, 
+    isConnecting,
+    connectionError,
     joinChatRoom,
     leaveChatRoom,
     sendMessage,
-    markAsRead,
-    isConnected
+    currentMessages
   } = useChat();
+  const { loadMessages } = useChatStore();
+  const { t } = useTranslation('chat');
 
-  const { showToast } = useUIStore();
+  // 메시지 스크롤을 맨 아래로
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-  // 채팅방 입장/퇴장
+
+
+  // 초기 메시지 로드
   useEffect(() => {
-    if (roomId && isConnected) {
-      joinChatRoom(roomId);
-    }
+    console.log('🔍 메시지 로드 useEffect 시작:', { roomUuid, user: !!user });
     
-    return () => {
-      if (roomId) {
-        leaveChatRoom(roomId);
+    if (!roomUuid) {
+      console.log('❌ roomUuid가 없음:', roomUuid);
+      return;
+    }
+
+    const loadInitialMessages = async () => {
+      try {
+        setLoading(true);
+        console.log('📥 이전 메시지 로드 시작:', roomUuid);
+        
+        const messageResponses = await chatService.getRecentMessages(roomUuid, 50);
+        console.log('📥 메시지 응답:', messageResponses);
+        console.log('📥 응답 타입:', typeof messageResponses, Array.isArray(messageResponses));
+        
+        if (!Array.isArray(messageResponses)) {
+          console.error('❌ 응답이 배열이 아님:', messageResponses);
+          return;
+        }
+        
+        // ChatMessageDocumentResponse를 ChatMessage로 변환
+        const chatMessages = messageResponses.map(msg => ({
+          id: msg.id,
+          chatRoomUuid: msg.chatRoomUuid,
+          sender: msg.senderName,
+          senderId: '', // membername 기반이므로 senderId는 빈 문자열
+          senderName: msg.senderName,
+          content: msg.content,
+          messageTime: msg.messageTime,
+          chatMessageStatus: (msg.chatMessageStatus as 'READ' | 'UNREAD') || 'READ'
+        }));
+        
+        console.log('🔄 변환된 메시지들:', chatMessages);
+        
+        // 스토어에 로드된 메시지들 저장
+        console.log('💾 스토어에 메시지 저장 시도...');
+        loadMessages(roomUuid, chatMessages);
+        console.log(`✅ ${chatMessages.length}개 이전 메시지 로드 완료`);
+        
+      } catch (error) {
+        console.error('❌ 메시지 로드 실패:', error);
+      } finally {
+        setLoading(false);
       }
     };
-  }, [roomId, isConnected, joinChatRoom, leaveChatRoom]);
 
+    loadInitialMessages();
+  }, [roomUuid]);
+
+  // 채팅방 입장 및 정리 - 안정화된 useEffect
+  useEffect(() => {
+    if (!user || !roomUuid) return;
+
+    console.log('🔗 ChatRoom: 마운트됨, 채팅방 입장:', roomUuid);
+
+    // 채팅방 입장
+    const handleJoinRoom = async () => {
+      try {
+        await joinChatRoom(roomUuid);
+        // 메시지 읽음 처리
+        await chatService.markMessagesAsRead(roomUuid);
+      } catch (error) {
+        console.error('ChatRoom: 채팅방 입장 중 오류:', error);
+      }
+    };
+
+    handleJoinRoom();
+
+    // 컴포넌트 언마운트 또는 roomUuid 변경 시 정리
+    return () => {
+      console.log('🚪 ChatRoom: 정리, 채팅방 나가기:', roomUuid);
+      leaveChatRoom(roomUuid);
+    };
+  }, [roomUuid, user?.id]); // 안정적인 의존성만 사용
+
+  // 새 메시지가 추가되면 스크롤
   useEffect(() => {
     scrollToBottom();
   }, [currentMessages]);
 
-  useEffect(() => {
-    // 메시지를 읽음으로 표시
-    if (roomId && currentMessages.length > 0) {
-      markAsRead(roomId);
+  const handleSendMessage = useCallback(async () => {
+    if (!newMessage.trim() || !user || sending) {
+      console.warn('ChatRoom: 메시지 전송 조건 미충족');
+      return;
     }
-  }, [roomId, currentMessages, markAsRead]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    setShowScrollButton(false);
+    console.log('📤 ChatRoom: 메시지 전송 시도:', newMessage.trim());
+
+    try {
+      setSending(true);
+      await sendMessage(newMessage.trim());
+      setNewMessage('');
+      console.log('✅ ChatRoom: 메시지 전송 완료');
+    } catch (error) {
+      console.error('❌ ChatRoom: 메시지 전송 실패:', error);
+    } finally {
+      setSending(false);
+    }
+  }, [newMessage, user, sending, sendMessage]);
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-    setShowScrollButton(!isNearBottom);
-  };
-
-  const handleSendMessage = (content: string) => {
-    if (!content.trim()) return;
-    sendMessage(content);
-  };
-
-  if (!isConnected) {
+  if (loading) {
     return (
-      <div 
-        className="h-full flex items-center justify-center"
-        style={{ color: 'var(--text-tertiary)' }}
-      >
-        <div className="text-center">
-          <div className="text-4xl mb-4">🔌</div>
-          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-            WebSocket 연결 중...
-          </h3>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            채팅 서버에 연결하고 있습니다.
-          </p>
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col relative">
-      {/* Header */}
-      <ChatHeader roomId={roomId} />
-
-      {/* Messages Area */}
+    <div className="flex flex-col h-full">
+      {/* 헤더 */}
       <div 
-        className="flex-1 overflow-y-auto px-6 py-4 space-y-4 relative scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
-        onScroll={handleScroll}
-        style={{ 
-          minHeight: 0,
-          maxHeight: 'calc(100vh - 200px)'
+        className="flex items-center justify-between p-4 border-b flex-shrink-0"
+        style={{
+          backgroundColor: 'var(--surface-primary)',
+          borderColor: 'var(--border-primary)',
         }}
       >
-        {/* Background Pattern for Messages */}
-        <div 
-          className="absolute inset-0 opacity-20 pointer-events-none"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236366f1' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            backgroundSize: '30px 30px'
-          }}
-        />
-
-        {currentMessages.length === 0 ? (
-          <div 
-            className="flex items-center justify-center h-full min-h-96 relative z-10"
-            style={{ color: 'var(--text-tertiary)' }}
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={onBack}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <div className="text-center">
+            <i className="ri-arrow-left-line text-lg" />
+          </button>
+          
+          {/* 디버깅용 연결 버튼 */}
+          {!isConnected && (
+            <button
+              onClick={async () => {
+                console.log('🔧 강제 WebSocket 연결 시도');
+                try {
+                  await joinChatRoom(roomUuid);
+                } catch (error) {
+                  console.error('❌ 강제 연결 실패:', error);
+                }
+              }}
+              className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              🔧 {t('connectTryAgain')}
+            </button>
+          )}
+          
+          <Avatar
+            src={undefined}
+            alt={opponentName}
+            fallback={opponentName}
+            size="sm"
+          />
+          
+          <div>
+            <h3 
+              className="font-medium"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {opponentName}
+            </h3>
+            <div className="flex items-center space-x-2">
               <div 
-                className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border shadow-lg"
-                style={{ 
-                  backgroundColor: 'var(--surface-secondary)',
-                  borderColor: 'var(--border-secondary)'
-                }}
+                className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}
+              />
+              <span 
+                className="text-xs"
+                style={{ color: 'var(--text-tertiary)' }}
               >
-                <i className="ri-chat-smile-2-line text-3xl text-indigo-500"></i>
-              </div>
-              <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                대화를 시작해보세요!
-              </h3>
-              <p className="text-sm mb-4">첫 메시지를 보내서 인사해보세요.</p>
-              <div 
-                className="inline-flex items-center px-4 py-2 rounded-full text-xs border"
-                style={{
-                  backgroundColor: 'var(--surface-tertiary)',
-                  borderColor: 'var(--border-secondary)',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                <i className="ri-lightbulb-line mr-2"></i>
-                💡 메시지를 길게 눌러 번역하고 단어장에 추가하세요
-              </div>
+                {isConnected ? t('online') : t('offline')}
+              </span>
             </div>
           </div>
-        ) : (
-          <div className="relative z-10">
-            {currentMessages.map((message, index) => {
-              const isLastMessage = index === currentMessages.length - 1;
-              const isFromSameUser = index > 0 && currentMessages[index - 1].sender === message.sender;
-              const timeDiff = index > 0 ? new Date(message.messageTime).getTime() - new Date(currentMessages[index - 1].messageTime).getTime() : 0;
-              const showTimestamp = !isFromSameUser || timeDiff > 300000; // 5 minutes
-
-              return (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                  isOwn={message.sender === 'currentUser'}
-                  showAvatar={!isFromSameUser || showTimestamp}
-                  showTimestamp={showTimestamp}
-                  participant={{
-                    id: message.sender,
-                    nickname: message.sender === 'currentUser' ? '나' : message.sender,
-                    avatar: '',
-                    isOnline: true
-                  }}
-                />
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-
-        {/* Scroll to Bottom Button */}
-        {showScrollButton && (
-          <button
-            onClick={scrollToBottom}
-            className="fixed bottom-32 right-8 w-12 h-12 text-white rounded-full shadow-xl flex items-center justify-center cursor-pointer hover:scale-110 transition-all duration-300 z-50 backdrop-blur-sm border-2 border-white/20"
-            style={{ 
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--info) 100%)'
-            }}
-          >
-            <i className="ri-arrow-down-line text-lg"></i>
-          </button>
-        )}
+        </div>
       </div>
 
-      {/* Input Area */}
-      <ChatInput onSendMessage={handleSendMessage} />
+      {/* 메시지 영역 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {currentMessages.length > 0 && console.log('🔍 렌더링할 메시지들:', currentMessages.map(m => ({ id: m.id, hasId: !!m.id, content: m.content })))}
+        {currentMessages.map((message, index) => {
+          // 백엔드 응답에 맞게 senderId 또는 senderName 사용
+          const isMyMessage = message.senderId === user?.id?.toString() || 
+                             message.sender === user?.nickname ||
+                             message.sender === user?.membername;
+          
+          // 안전한 key 생성 (id가 없거나 중복일 경우를 대비)
+          const safeKey = message.id || `message-${index}-${message.messageTime}`;
+          
+          return (
+            <div
+              key={safeKey}
+              className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+            >
+              <div 
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                  isMyMessage
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-100 dark:bg-gray-800'
+                }`}
+              >
+                {/* 상대방 메시지의 경우 발신자 이름 표시 */}
+                {!isMyMessage && (
+                  <p className="text-xs font-medium mb-1 text-gray-600 dark:text-gray-300">
+                    {message.senderName || message.sender}
+                  </p>
+                )}
+                <p className="text-sm break-words">{message.content}</p>
+                <p 
+                  className={`text-xs mt-1 ${
+                    isMyMessage
+                      ? 'text-purple-200' 
+                      : 'text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  {formatDistanceToNow(new Date(message.messageTime), { addSuffix: true })}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* 메시지 입력 */}
+      <div 
+        className="p-4 border-t flex-shrink-0"
+        style={{
+          backgroundColor: 'var(--surface-primary)',
+          borderColor: 'var(--border-primary)',
+        }}
+      >
+        <div className="flex items-end space-x-3">
+          <div className="flex-1">
+            <textarea
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={t('messagePlaceholder')}
+              className="w-full px-4 py-3 rounded-2xl resize-none border focus:outline-none focus:ring-2 focus:ring-purple-500 input-enhanced"
+              style={{
+                backgroundColor: 'var(--input-bg)',
+                borderColor: 'var(--input-border)',
+                color: 'var(--text-primary)',
+              }}
+              rows={1}
+              maxLength={500}
+            />
+          </div>
+          
+          <button
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim() || sending || !isConnected}
+            className="p-3 rounded-2xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {sending ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            ) : (
+              <i className="ri-send-plane-fill text-lg" />
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

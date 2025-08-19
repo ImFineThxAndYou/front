@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '../stores/auth';
 import { useChatStore } from '../stores/chat';
 
@@ -13,72 +13,120 @@ export const useChat = () => {
     chatMessages,
     unreadCounts,
     isLoading,
-    connectWebSocket,
-    disconnectWebSocket,
+    connectWebSocket: storeConnectWebSocket,
+    disconnectWebSocket: storeDisconnectWebSocket,
     setCurrentChatRoom,
-    joinChatRoom,
-    leaveChatRoom,
-    sendMessage,
+    joinChatRoom: storeJoinChatRoom,
+    leaveChatRoom: storeLeaveChatRoom,
+    sendMessage: storeSendMessage,
     markAsRead,
     clearConnectionError,
     loadChatRooms
   } = useChatStore();
 
-  // 사용자 인증 시 자동 WebSocket 연결
-  useEffect(() => {
-    if (user && !isConnected && !isConnecting) {
-      connectWebSocket();
-    }
-  }, [user, isConnected, isConnecting, connectWebSocket]);
+  // 안정적인 함수 참조를 위한 ref
+  const storeRefs = useRef({
+    connectWebSocket: storeConnectWebSocket,
+    disconnectWebSocket: storeDisconnectWebSocket,
+    joinChatRoom: storeJoinChatRoom,
+    leaveChatRoom: storeLeaveChatRoom,
+    sendMessage: storeSendMessage
+  });
 
-  // 컴포넌트 언마운트 시 연결 해제
-  useEffect(() => {
-    return () => {
-      if (isConnected) {
-        disconnectWebSocket();
-      }
-    };
-  }, [isConnected, disconnectWebSocket]);
+  // store 함수들의 최신 참조 유지
+  storeRefs.current = {
+    connectWebSocket: storeConnectWebSocket,
+    disconnectWebSocket: storeDisconnectWebSocket,
+    joinChatRoom: storeJoinChatRoom,
+    leaveChatRoom: storeLeaveChatRoom,
+    sendMessage: storeSendMessage
+  };
 
-  // 채팅방 입장
-  const handleJoinChatRoom = useCallback(async (chatRoomId: string) => {
-    if (!isConnected) {
-      console.error('WebSocket이 연결되지 않았습니다.');
-      return;
-    }
+  // WebSocket 연결 - 완전히 안정화된 함수
+  const connectWebSocket = useCallback(async () => {
+    console.log('🔗 useChat: WebSocket 연결 시도');
+    await storeRefs.current.connectWebSocket();
+  }, []);
 
+  // WebSocket 연결 해제 - 완전히 안정화된 함수
+  const disconnectWebSocket = useCallback(() => {
+    console.log('🔌 useChat: WebSocket 연결 해제');
+    storeRefs.current.disconnectWebSocket();
+  }, []);
+
+  // 채팅방 입장 - 완전히 안정화된 함수
+  const joinChatRoom = useCallback(async (chatRoomId: string) => {
+    console.log('🔍 useChat: 채팅방 입장:', chatRoomId);
+    
     try {
-      await joinChatRoom(chatRoomId);
+      // WebSocket 연결 확인 및 연결
+      if (!isConnected && !isConnecting) {
+        console.log('🔗 WebSocket 연결 필요, 연결 시도...');
+        await connectWebSocket();
+      }
+
+      // 채팅방 입장
+      await storeRefs.current.joinChatRoom(chatRoomId);
     } catch (error) {
-      console.error('채팅방 입장 실패:', error);
+      console.error('❌ useChat: 채팅방 입장 실패:', error);
     }
-  }, [isConnected, joinChatRoom]);
+  }, [isConnected, isConnecting, connectWebSocket]);
 
-  // 채팅방 나가기
-  const handleLeaveChatRoom = useCallback((chatRoomId: string) => {
-    leaveChatRoom(chatRoomId);
-  }, [leaveChatRoom]);
+  // 채팅방 나가기 - 완전히 안정화된 함수
+  const leaveChatRoom = useCallback((chatRoomId: string) => {
+    console.log('🚪 useChat: 채팅방 나가기:', chatRoomId);
+    storeRefs.current.leaveChatRoom(chatRoomId);
+  }, []);
 
-  // 메시지 전송
-  const handleSendMessage = useCallback(async (content: string) => {
+  // 메시지 전송 - 완전히 안정화된 함수
+  const sendMessage = useCallback(async (content: string) => {
+    console.log('🔍 useChat: 메시지 전송, currentChatRoom:', currentChatRoom);
+    
     if (!currentChatRoom) {
-      console.error('현재 채팅방이 없습니다.');
+      console.error('❌ 현재 채팅방이 없습니다.');
       return;
     }
 
     if (!content.trim()) {
+      console.warn('⚠️ 빈 메시지는 전송할 수 없습니다.');
       return;
     }
 
     try {
-      await sendMessage(currentChatRoom, content);
+      await storeRefs.current.sendMessage(currentChatRoom, content);
+      console.log('✅ 메시지 전송 성공');
     } catch (error) {
-      console.error('메시지 전송 실패:', error);
+      console.error('❌ 메시지 전송 실패:', error);
     }
-  }, [currentChatRoom, sendMessage]);
+  }, [currentChatRoom]);
+
+  // 자동 연결 제거 - 채팅 페이지에서만 수동으로 연결
+  // useEffect(() => {
+  //   console.log('🔍 useChat useEffect 실행:', {
+  //     hasUser: !!user,
+  //     userId: user?.id,
+  //     isConnected,
+  //     isConnecting,
+  //     shouldConnect: user && !isConnected && !isConnecting
+  //   });
+  //   
+  //   if (user && !isConnected && !isConnecting) {
+  //     console.log('🔗 useChat: 사용자 인증됨, WebSocket 연결 시도');
+  //     connectWebSocket();
+  //   }
+  // }, [user?.id, connectWebSocket]); // user.id만 의존성으로 사용
 
   // 현재 채팅방의 메시지들
   const currentMessages = currentChatRoom ? chatMessages.get(currentChatRoom) || [] : [];
+  
+  // 메시지 변경 디버깅
+  useEffect(() => {
+    console.log('🔍 useChat currentMessages 변경됨:', { 
+      currentChatRoom, 
+      messageCount: currentMessages.length,
+      messages: currentMessages.map(m => ({ id: m.id, content: m.content, sender: m.sender }))
+    });
+  }, [currentMessages, currentChatRoom]);
 
   // 현재 채팅방의 읽지 않은 메시지 개수
   const currentUnreadCount = currentChatRoom ? unreadCounts.get(currentChatRoom) || 0 : 0;
@@ -103,13 +151,13 @@ export const useChat = () => {
     currentUnreadCount,
     totalUnreadCount,
     
-    // 액션
+    // 액션 (모두 안정화된 함수)
     connectWebSocket,
     disconnectWebSocket,
     setCurrentChatRoom,
-    joinChatRoom: handleJoinChatRoom,
-    leaveChatRoom: handleLeaveChatRoom,
-    sendMessage: handleSendMessage,
+    joinChatRoom,
+    leaveChatRoom,
+    sendMessage,
     markAsRead,
     clearConnectionError,
     loadChatRooms

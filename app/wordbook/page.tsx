@@ -1,45 +1,187 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useWordbookStore } from '../../lib/stores/wordbook';
+import { useAuthStore } from '../../lib/stores/auth';
 import { useTranslation } from '../../lib/hooks/useTranslation';
+import { vocabookService } from '../../lib/services/vocabookService';
+import { quizService } from '../../lib/services/quizService';
 import MainLayout from '../components/layout/MainLayout';
-import { useWordbookStore, Word } from '../../lib/stores/wordbook';
-import WordRow from '../components/wordbook/WordRow';
-import WordModal from '../components/wordbook/WordModal';
-import FilterPanel from '../components/wordbook/FilterPanel';
-import BulkActions from '../components/wordbook/BulkActions';
-import EmptyWordbook from '../components/wordbook/EmptyWordbook';
-import QuizPanel from '../components/wordbook/QuizPanel';
+import WordbookSidebar from '../components/wordbook/WordbookSidebar';
+import WordCardGrid from '../components/wordbook/WordCardGrid';
+import QuizHistoryGrid from '../components/wordbook/QuizHistoryGrid';
+import QuizModal from '../components/wordbook/QuizModal';
+
+import { Word } from '../../lib/stores/wordbook';
 
 export default function WordbookPage() {
-  const { t } = useTranslation('wordbook');
-  const {
-    words,
-    filters,
-    selectedWords,
-    isLoading,
-    getFilteredWords,
+  const { 
+    words, 
+    filters, 
+    getFilteredWords, 
     getTodayWords,
     setSearchQuery,
-    selectWord,
-    clearSelection
+    loadWords,
+    isLoading
   } = useWordbookStore();
+  
+  const { user, isAuthenticated } = useAuthStore();
+  
+  // 디버깅을 위한 추가 로그
+  console.log('🔍 [WordbookPage] 렌더링 - user:', user, 'isAuthenticated:', isAuthenticated);
+  
+  const { t } = useTranslation(['wordbook', 'common']);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedWord, setSelectedWord] = useState<Word | null>(null);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [searchQuery, setLocalSearchQuery] = useState('');
+  const [activeView, setActiveView] = useState<'words' | 'quiz-history'>('words');
+  const [selectedQuizStatus, setSelectedQuizStatus] = useState<'ALL' | 'PENDING' | 'SUBMIT'>('ALL');
+  const [quizStats, setQuizStats] = useState<{
+    total: number;
+    pending: number;
+    completed: number;
+  } | null>(null);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingWord, setEditingWord] = useState<Word | null>(null);
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [showQuizPanel, setShowQuizPanel] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-
-  // Get filtered and today's words
   const filteredWords = getFilteredWords();
   const todayWords = getTodayWords();
+
+  // 퀴즈 통계 로드
+  const loadQuizStats = async () => {
+    try {
+      const response = await quizService.getMyQuizzes(0, 1000); // 충분히 큰 수로 전체 로드
+      const total = response.totalElements;
+      const pending = response.content.filter(q => q.status === 'PENDING').length;
+      const completed = response.content.filter(q => q.status === 'SUBMIT').length;
+      
+      setQuizStats({ total, pending, completed });
+    } catch (error) {
+      console.error('퀴즈 통계 로드 실패:', error);
+    }
+  };
+
+  // 단어장 API 직접 테스트
+  const testVocabookAPI = async () => {
+    console.log('🧪 [WordbookPage] 단어장 API 직접 테스트 시작');
+    console.log('👤 [WordbookPage] 현재 사용자:', user);
+    
+    const membernameToUse = user?.membername || 'test'; // 현재 사용자의 membername 사용
+    console.log('🎯 [WordbookPage] 사용할 membername:', membernameToUse);
+    
+    try {
+      // 1. Store를 거치지 않고 직접 API 서비스 호출
+      console.log('🔄 [WordbookPage] VocabookService 직접 호출 -', membernameToUse);
+      const result = await vocabookService.getVocabulariesByMember(membernameToUse);
+      console.log('✅ [WordbookPage] VocabookService 직접 호출 성공:', result);
+      
+      // 2. Store를 통한 호출도 테스트
+      console.log('🔄 [WordbookPage] Store를 통한 호출 -', membernameToUse);
+      await loadWords(membernameToUse);
+      console.log('✅ [WordbookPage] Store를 통한 호출 성공');
+      
+    } catch (error) {
+      console.error('❌ [WordbookPage] API 테스트 실패:', error);
+    }
+  };
+
+  // 페이지 로드 시 무조건 API 테스트
+  useEffect(() => {
+    console.log('🔄 [WordbookPage] 페이지 로드됨 - 무조건 API 테스트');
+    console.log('👤 [WordbookPage] user 확인:', user);
+    
+    // 사용자 정보가 있을 때만 API 호출
+    if (user?.membername) {
+      console.log('✅ [WordbookPage] 사용자 정보 확인됨, 2초 후 API 테스트');
+      setTimeout(() => {
+        testVocabookAPI();
+        loadQuizStats(); // 퀴즈 통계도 함께 로드
+      }, 2000);
+    } else {
+      console.log('⏳ [WordbookPage] 사용자 정보 대기 중...');
+    }
+  }, [user]); // user 정보가 변경될 때 실행
+
+  useEffect(() => {
+    const delayedSearch = setTimeout(() => {
+      setSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(delayedSearch);
+  }, [searchQuery, setSearchQuery]);
+
+  // 카테고리별 단어 필터링
+  const getCategoryWords = () => {
+    let categoryWords = filteredWords;
+    
+    switch (selectedCategory) {
+      case 'today':
+        categoryWords = todayWords;
+        break;
+      case 'easy':
+        categoryWords = filteredWords.filter(w => w.difficulty <= 2);
+        break;
+      case 'medium':
+        categoryWords = filteredWords.filter(w => w.difficulty === 3);
+        break;
+      case 'hard':
+        categoryWords = filteredWords.filter(w => w.difficulty >= 4);
+        break;
+      case 'noun':
+        categoryWords = filteredWords.filter(w => w.partOfSpeech === 'noun');
+        break;
+      case 'verb':
+        categoryWords = filteredWords.filter(w => w.partOfSpeech === 'verb');
+        break;
+      case 'adjective':
+        categoryWords = filteredWords.filter(w => w.partOfSpeech === 'adjective');
+        break;
+      case 'adverb':
+        categoryWords = filteredWords.filter(w => w.partOfSpeech === 'adverb');
+        break;
+      case 'review':
+        categoryWords = filteredWords.filter(w => w.difficulty >= 4);
+        break;
+      default:
+        categoryWords = filteredWords;
+    }
+    
+    return categoryWords;
+  };
+
+  const categoryWords = getCategoryWords();
+
+  // 통계 계산
+  const stats = {
+    total: filteredWords.length,
+    today: todayWords.length,
+    easy: filteredWords.filter(w => w.difficulty <= 2).length,
+    medium: filteredWords.filter(w => w.difficulty === 3).length,
+    hard: filteredWords.filter(w => w.difficulty >= 4).length,
+    nouns: filteredWords.filter(w => w.partOfSpeech === 'noun').length,
+    verbs: filteredWords.filter(w => w.partOfSpeech === 'verb').length,
+    adjectives: filteredWords.filter(w => w.partOfSpeech === 'adjective').length,
+    adverbs: filteredWords.filter(w => w.partOfSpeech === 'adverb').length,
+    review: filteredWords.filter(w => w.difficulty >= 4).length
+  };
+
+  const handleWordSelect = (word: Word) => {
+    setSelectedWord(word);
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setSelectedWord(null); // 카테고리 변경 시 선택된 단어 초기화
+  };
+
+  const handleQuizStatusChange = (status: 'ALL' | 'PENDING' | 'SUBMIT') => {
+    setSelectedQuizStatus(status);
+    setActiveView('quiz-history'); // 퀴즈 상태 변경 시 자동으로 퀴즈 히스토리 뷰로 전환
+  };
 
   return (
     <MainLayout>
       <div 
-        className="h-full flex flex-col theme-transition"
+        className="flex h-full theme-transition"
         style={{
           background: `linear-gradient(135deg, 
             var(--bg-primary) 0%, 
@@ -49,372 +191,89 @@ export default function WordbookPage() {
             var(--bg-primary) 100%)`
         }}
       >
-        {/* Compact Header */}
-        <div className="flex-shrink-0 p-6">
-          <div 
-            className="backdrop-blur-sm rounded-2xl border shadow-lg p-6 theme-transition"
-            style={{
-              backgroundColor: 'var(--surface-primary)',
-              borderColor: 'var(--border-primary)',
-              boxShadow: 'var(--shadow-lg)'
-            }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div 
-                  className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{
-                    background: 'linear-gradient(135deg, var(--info), var(--success))'
-                  }}
-                >
-                  <i className="ri-sparkles-line text-xl text-white"></i>
-                </div>
-                <div>
-                  <h1 
-                    className="text-2xl font-bold"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    {t('title')}
-                  </h1>
-                  <p 
-                    className="text-sm"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
-                    {filteredWords.length}{t('common.words')} • {t('common.today')} {todayWords.length}{t('common.words')} {t('common.added')}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                {/* Quick Test Buttons */}
-                <div 
-                  className="flex items-center rounded-xl p-1 border theme-transition"
-                  style={{
-                    background: 'linear-gradient(135deg, var(--success), var(--info))',
-                    borderColor: 'var(--border-secondary)'
-                  }}
-                >
-                  <button
-                    onClick={() => setShowQuizPanel(true)}
-                    className="flex items-center px-3 py-2 text-white rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer font-medium text-sm shadow-lg"
-                    style={{
-                      backgroundColor: 'var(--success)',
-                      boxShadow: 'var(--shadow-md)'
-                    }}
-                  >
-                    <i className="ri-flashlight-line w-4 h-4 mr-1"></i>
-                    {t('quiz.title')}
-                  </button>
-                  <button 
-                    className="flex items-center px-3 py-2 rounded-lg hover:shadow-lg transition-all cursor-pointer font-medium text-sm ml-1"
-                    style={{
-                      backgroundColor: 'var(--surface-secondary)',
-                      color: 'var(--success)',
-                      border: '1px solid var(--border-secondary)'
-                    }}
-                  >
-                    <i className="ri-target-line w-4 h-4 mr-1"></i>
-                    {t('quiz.review')}
-                  </button>
-                </div>
-
-                {/* View Mode Toggle */}
-                <div 
-                  className="flex items-center rounded-lg p-1 theme-transition"
-                  style={{
-                    backgroundColor: 'var(--surface-secondary)',
-                    border: '1px solid var(--border-secondary)'
-                  }}
-                >
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-md transition-all cursor-pointer ${
-                      viewMode === 'list' 
-                        ? 'text-white' 
-                        : 'text-gray-600 dark:text-gray-400'
-                    }`}
-                    style={{
-                      backgroundColor: viewMode === 'list' ? 'var(--info)' : 'transparent'
-                    }}
-                  >
-                    <i className="ri-list-check w-4 h-4"></i>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-md transition-all cursor-pointer ${
-                      viewMode === 'grid' 
-                        ? 'text-white' 
-                        : 'text-gray-600 dark:text-gray-400'
-                    }`}
-                    style={{
-                      backgroundColor: viewMode === 'grid' ? 'var(--info)' : 'transparent'
-                    }}
-                  >
-                    <i className="ri-grid-line w-4 h-4"></i>
-                  </button>
-                </div>
-
-                {/* Add Word Button */}
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="flex items-center px-4 py-2 rounded-xl font-medium transition-all duration-300 cursor-pointer whitespace-nowrap hover:shadow-lg hover:-translate-y-0.5"
-                  style={{
-                    background: 'linear-gradient(135deg, var(--success), var(--info))',
-                    color: 'white',
-                    boxShadow: 'var(--shadow-md)'
-                  }}
-                >
-                  <i className="ri-add-line w-4 h-4 mr-2"></i>
-                  {t('addWord')}
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-4">
-              <div 
-                className="text-center p-3 rounded-xl border theme-transition"
-                style={{
-                  backgroundColor: 'var(--surface-secondary)',
-                  borderColor: 'var(--border-secondary)'
-                }}
-              >
-                <div 
-                  className="text-lg font-bold mb-1"
-                  style={{ color: 'var(--text-primary)' }}
-                >{filteredWords.length}</div>
-                <div 
-                  className="text-xs"
-                  style={{ color: 'var(--text-tertiary)' }}
-                >{t('filters.all')}</div>
-              </div>
-              <div 
-                className="text-center p-3 rounded-xl border theme-transition"
-                style={{
-                  backgroundColor: 'var(--surface-secondary)',
-                  borderColor: 'var(--border-secondary)'
-                }}
-              >
-                <div 
-                  className="text-lg font-bold mb-1"
-                  style={{ color: 'var(--text-primary)' }}
-                >{todayWords.length}</div>
-                <div 
-                  className="text-xs"
-                  style={{ color: 'var(--text-tertiary)' }}
-                >{t('common.today')}</div>
-              </div>
-              <div 
-                className="text-center p-3 rounded-xl border theme-transition"
-                style={{
-                  backgroundColor: 'var(--surface-secondary)',
-                  borderColor: 'var(--border-secondary)'
-                }}
-              >
-                <div 
-                  className="text-lg font-bold mb-1"
-                  style={{ color: 'var(--text-primary)' }}
-                >{filteredWords.filter(w => w.difficulty <= 2).length}</div>
-                <div 
-                  className="text-xs"
-                  style={{ color: 'var(--text-tertiary)' }}
-                >{t('stats.mastered')}</div>
-              </div>
-              <div 
-                className="text-center p-3 rounded-xl border theme-transition"
-                style={{
-                  backgroundColor: 'var(--surface-secondary)',
-                  borderColor: 'var(--border-secondary)'
-                }}
-              >
-                <div 
-                  className="text-lg font-bold mb-1"
-                  style={{ color: 'var(--text-primary)' }}
-                >{filteredWords.filter(w => w.difficulty >= 4).length}</div>
-                <div 
-                  className="text-xs"
-                  style={{ color: 'var(--text-tertiary)' }}
-                >{t('stats.reviewNeeded')}</div>
-              </div>
-            </div>
-          </div>
+        {/* Wordbook Sidebar */}
+        <div 
+          className="w-80 border-r h-full flex-shrink-0 backdrop-blur-xl theme-transition"
+          style={{
+            backgroundColor: 'var(--surface-primary)',
+            borderColor: 'var(--border-primary)',
+            boxShadow: 'var(--shadow-lg)'
+          }}
+        >
+          <WordbookSidebar 
+            selectedCategory={selectedCategory}
+            onCategoryChange={handleCategoryChange}
+            onQuizStart={() => setShowQuizModal(true)}
+            stats={stats}
+            searchQuery={searchQuery}
+            onSearchChange={setLocalSearchQuery}
+            activeView={activeView}
+            onViewChange={setActiveView}
+            quizStats={quizStats}
+            selectedQuizStatus={selectedQuizStatus}
+            onQuizStatusChange={handleQuizStatusChange}
+          />
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex min-h-0">
-          {/* Filter Panel */}
-          {showFilterPanel && (
-            <div className="w-80 border-r flex-shrink-0 theme-transition">
-              <FilterPanel />
-            </div>
-          )}
-
-          {/* Words List */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Toolbar */}
-            <div 
-              className="flex items-center justify-between p-4 border-b theme-transition"
-              style={{
-                backgroundColor: 'var(--surface-secondary)',
-                borderColor: 'var(--border-secondary)'
-              }}
-            >
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <i className="ri-search-line absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-quaternary)' }}></i>
-                  <input
-                    type="text"
-                    placeholder={t('search.placeholder')}
-                    value={filters.searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 rounded-xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                    style={{
-                      backgroundColor: 'var(--input-bg)',
-                      borderColor: 'var(--input-border)',
-                      color: 'var(--text-primary)',
-                      boxShadow: 'var(--shadow-sm)'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'var(--input-focus)';
-                      e.target.style.boxShadow = 'var(--shadow-md)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'var(--input-border)';
-                      e.target.style.boxShadow = 'var(--shadow-sm)';
-                    }}
-                  />
-                </div>
-                <button
-                  onClick={() => setShowFilterPanel(!showFilterPanel)}
-                  className={`p-2 rounded-lg transition-all cursor-pointer ${
-                    showFilterPanel 
-                      ? 'text-white' 
-                      : 'text-gray-600 dark:text-gray-400'
-                  }`}
-                  style={{
-                    backgroundColor: showFilterPanel ? 'var(--info)' : 'var(--surface-tertiary)'
-                  }}
-                >
-                  <i className="ri-filter-line w-4 h-4"></i>
-                </button>
+        <div className="flex-1 flex flex-col h-full min-w-0 relative">
+          {/* API 테스트 및 상태 표시 (디버깅용) */}
+          <div className="p-4 bg-blue-50 border-b border-blue-200">
+            <div className="flex flex-wrap gap-2 items-center">
+              <button 
+                onClick={testVocabookAPI}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                disabled={isLoading}
+              >
+                🧪 API 테스트
+              </button>
+              <button 
+                onClick={() => loadWords(user?.membername || 'user1')}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                disabled={isLoading}
+              >
+                🔄 단어장 새로고침 ({user?.membername || 'user1'})
+              </button>
+              <div className="flex gap-2 text-sm">
+                <span className="px-3 py-1 bg-white rounded border">
+                  📊 총 단어: {words.length}개
+                </span>
+                <span className="px-3 py-1 bg-white rounded border">
+                  👤 사용자: {user?.membername || 'user1'}
+                </span>
+                <span className={`px-3 py-1 rounded border ${isLoading ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                  {isLoading ? '⏳ 로딩 중...' : '✅ 준비'}
+                </span>
               </div>
-
-              <div className="flex items-center space-x-2">
-                {selectedWords.length > 0 && (
-                  <BulkActions />
-                )}
-                <button
-                  onClick={() => setShowQuizPanel(true)}
-                  className="flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-300 cursor-pointer whitespace-nowrap hover:shadow-lg hover:-translate-y-0.5"
-                  style={{
-                    backgroundColor: 'var(--warning)',
-                    color: 'white',
-                    boxShadow: 'var(--shadow-md)'
-                  }}
-                >
-                  <i className="ri-play-circle-line w-4 h-4 mr-2"></i>
-                  {t('quiz.startQuiz')}
-                </button>
-              </div>
-            </div>
-
-            {/* Words Grid/List */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {filteredWords.length === 0 ? (
-                <EmptyWordbook hasSearch={!!filters.searchQuery} onAddWord={() => setShowAddModal(true)} />
-              ) : viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {filteredWords.map((word) => (
-                    <div 
-                      key={word.id}
-                      className="p-4 rounded-2xl border hover:shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-1 theme-transition"
-                      style={{
-                        backgroundColor: 'var(--surface-primary)',
-                        borderColor: 'var(--border-secondary)',
-                        boxShadow: 'var(--shadow-sm)'
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span 
-                          className="font-semibold text-lg"
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          {word.word}
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <i className="ri-time-line w-4 h-4" style={{ color: 'var(--text-quaternary)' }}></i>
-                        </div>
-                      </div>
-                      <p 
-                        className="text-sm mb-3"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        {word.meanings.join(', ')}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span 
-                          className="px-2 py-1 rounded-full text-xs font-medium"
-                          style={{
-                            backgroundColor: word.difficulty <= 2 ? 'var(--success)' : 
-                                           word.difficulty <= 3 ? 'var(--warning)' : 'var(--error)',
-                            color: 'white'
-                          }}
-                        >
-                          {word.difficulty <= 2 ? t('common.difficulty.beginner') :
-                           word.difficulty <= 3 ? t('common.difficulty.intermediate') : t('common.difficulty.advanced')}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingWord(word);
-                          }}
-                          className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                          style={{ color: 'var(--text-quaternary)' }}
-                        >
-                          <i className="ri-more-2-line w-4 h-4"></i>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredWords.map((word) => (
-                    <WordRow
-                      key={word.id}
-                      word={word}
-                      isSelected={selectedWords.includes(word.id)}
-                      onSelect={() => selectWord(word.id)}
-                      onEdit={() => setEditingWord(word)}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           </div>
+
+          {isLoading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
+              </div>
+            </div>
+          ) : activeView === 'words' ? (
+            <WordCardGrid 
+              words={categoryWords}
+              selectedWord={selectedWord}
+              onWordSelect={handleWordSelect}
+              category={selectedCategory}
+              searchQuery={searchQuery}
+            />
+          ) : (
+            <QuizHistoryGrid 
+              onQuizStart={() => setShowQuizModal(true)}
+              selectedStatus={selectedQuizStatus}
+            />
+          )}
         </div>
 
-        {/* Modals */}
-        {showAddModal && (
-          <WordModal
-            word={null}
-            onClose={() => setShowAddModal(false)}
-          />
-        )}
-
-        {editingWord && (
-          <WordModal
-            word={editingWord}
-            onClose={() => setEditingWord(null)}
-          />
-        )}
-
-        {showQuizPanel && (
-          <QuizPanel
-            words={filteredWords}
-            todayWords={todayWords}
-            onClose={() => setShowQuizPanel(false)}
-          />
+        {/* Quiz Modal */}
+        {showQuizModal && (
+          <QuizModal onClose={() => setShowQuizModal(false)} />
         )}
       </div>
     </MainLayout>

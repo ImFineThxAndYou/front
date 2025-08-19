@@ -119,3 +119,32 @@ export const normalizeInstant = (instantString: string): string => {
     return new Date().toISOString();
   }
 };
+
+// Date 객체를 상대적 시간으로 포맷 (예: "2분 전", "1시간 전")
+export const formatDistanceToNow = (date: Date, options?: { addSuffix?: boolean }): string => {
+  try {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    const weeks = Math.floor(days / 7);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+    
+    const suffix = options?.addSuffix ? ' 전' : '';
+    
+    if (minutes < 1) return `방금${suffix}`;
+    if (minutes < 60) return `${minutes}분${suffix}`;
+    if (hours < 24) return `${hours}시간${suffix}`;
+    if (days < 7) return `${days}일${suffix}`;
+    if (weeks < 4) return `${weeks}주${suffix}`;
+    if (months < 12) return `${months}개월${suffix}`;
+    
+    return `${years}년${suffix}`;
+  } catch (error) {
+    console.error('❌ formatDistanceToNow 실패:', error);
+    return '알 수 없음';
+  }
+};

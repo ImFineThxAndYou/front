@@ -92,6 +92,8 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         // 로컬 스토리지와 axios 헤더 정리
         localStorage.removeItem('accessToken');
+        localStorage.removeItem('currentUser');
+        console.log('🗑️ useAuthStore: localStorage에서 currentUser 제거');
         set({ user: null, accessToken: null, isAuthenticated: false });
       },
 
@@ -159,6 +161,10 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true 
             });
             
+            // localStorage에 currentUser 저장
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+            console.log('💾 useAuthStore: localStorage에 currentUser 저장:', userData);
+            
             console.log('✅ useAuthStore: 사용자 정보 설정 완료', userData);
             console.log('✅ useAuthStore: 상태 업데이트 완료 - user:', !!userData, 'isAuthenticated: true');
           } else {
@@ -171,6 +177,8 @@ export const useAuthStore = create<AuthState>()(
           // 토큰이 유효하지 않으면 로그아웃
           set({ isAuthenticated: false, user: null, accessToken: null });
           localStorage.removeItem('accessToken');
+          localStorage.removeItem('currentUser');
+          console.log('🗑️ useAuthStore: 토큰 검증 실패로 currentUser 제거');
           return false;
         }
       }
