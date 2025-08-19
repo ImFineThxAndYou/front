@@ -9,15 +9,28 @@ axios.defaults.withCredentials = true;
 // 토큰 갱신 중인지 확인하는 플래그
 let isRefreshing = false;
 let refreshPromise: Promise<string> | null = null;
+let lastRefreshTime = 0;
+const REFRESH_COOLDOWN = 5000; // 5초 쿨다운
 
 // 토큰 갱신 함수
 const refreshToken = async (): Promise<string> => {
+  const now = Date.now();
+  
+  // 쿨다운 체크
+  if (now - lastRefreshTime < REFRESH_COOLDOWN) {
+    console.log('⏳ 토큰 갱신 쿨다운 중...');
+    if (refreshPromise) {
+      return await refreshPromise;
+    }
+  }
+  
   if (isRefreshing && refreshPromise) {
     console.log('⏳ 기존 토큰 갱신 대기...');
     return await refreshPromise;
   }
 
   isRefreshing = true;
+  lastRefreshTime = now;
   console.log('🔄 새로운 토큰 갱신 시작...');
   
   refreshPromise = axios.post("/api/auth/refresh", null, { 

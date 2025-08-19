@@ -33,7 +33,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     document.documentElement.className = document.documentElement.className.replace(/theme-\w+/, '') + ` theme-${theme}`;
   }, [theme]);
 
-  // 인증 상태 확인 및 조건부 연결
+  // 인증 상태 확인 - 앱 시작 시 한 번만 실행
   useEffect(() => {
     const verifyAuth = async () => {
       try {
@@ -45,15 +45,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         if (isAuth && user?.membername) {
           console.log('🔗 MainLayout: SSE 연결 시도:', user.membername);
           await sseManager.connect(user.membername);
-          
-          // 채팅 페이지에서만 WebSocket 연결
-          const needsWebSocket = pathname?.startsWith('/chat');
-          if (needsWebSocket) {
-            console.log('🔗 MainLayout: 채팅 페이지 진입, WebSocket 연결 시도');
-            await connectWebSocket();
-          } else {
-            console.log('ℹ️ MainLayout: 채팅 페이지가 아님, WebSocket 연결 생략');
-          }
         }
       } catch (error) {
         console.error('❌ MainLayout: 인증 확인 실패:', error);
@@ -63,7 +54,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
     };
 
     verifyAuth();
-  }, [checkAuth, user?.membername, pathname]);
+  }, []); // 빈 의존성 배열 - 앱 시작 시 한 번만 실행
+
+  // 페이지별 WebSocket 연결 관리
+  useEffect(() => {
+    if (!isAuthenticated || !user?.membername) return;
+
+    const needsWebSocket = pathname?.startsWith('/chat');
+    
+    if (needsWebSocket) {
+      console.log('🔗 MainLayout: 채팅 페이지 진입, WebSocket 연결 시도');
+      connectWebSocket();
+    } else {
+      console.log('ℹ️ MainLayout: 채팅 페이지가 아님, WebSocket 연결 해제');
+      disconnectWebSocket();
+    }
+  }, [pathname, isAuthenticated, user?.membername]); // pathname 변경시에만 WebSocket 관리
 
   // 컴포넌트 언마운트 시 연결 해제
   useEffect(() => {

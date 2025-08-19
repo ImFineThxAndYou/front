@@ -64,15 +64,20 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
       return { message: '알림 내용을 불러올 수 없습니다.' };
     }
 
+    // 빈 문자열이나 공백만 있는 경우
+    const trimmedPayload = payloadString.trim();
+    if (!trimmedPayload) {
+      return { message: '알림 내용이 없습니다.' };
+    }
+
     try {
-      // payload가 JSON 문자열인 경우 파싱
-      if (payloadString.trim().startsWith('{') && payloadString.trim().endsWith('}')) {
-        return JSON.parse(payloadString);
-      }
-      
-      // payload가 key=value 형식인 경우 파싱
-      if (payloadString.includes('=')) {
-        const keyValuePairs = payloadString.split(',');
+      // 백엔드에서 오는 형식: "{key=value, key=value}"
+      if (trimmedPayload.startsWith('{') && trimmedPayload.endsWith('}')) {
+        // 중괄호 제거
+        const content = trimmedPayload.slice(1, -1);
+        
+        // key=value 쌍으로 분리
+        const keyValuePairs = content.split(',');
         const result: any = {};
         
         keyValuePairs.forEach(pair => {
@@ -88,12 +93,24 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
         return result;
       }
       
+      // 일반 JSON 형식인 경우 (백업)
+      if (trimmedPayload.startsWith('{') && trimmedPayload.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(trimmedPayload);
+          if (parsed && typeof parsed === 'object') {
+            return parsed;
+          }
+        } catch (jsonError) {
+          // JSON 파싱 실패 시 위의 key=value 파싱으로 진행
+        }
+      }
+      
       // 단순 문자열인 경우
-      return { message: payloadString };
+      return { message: trimmedPayload };
     } catch (error) {
       console.error('Payload 파싱 실패:', error, '원본 payload:', payloadString);
       // 파싱 실패 시 원본 문자열을 message로 반환
-      return { message: payloadString || '알림 내용을 불러올 수 없습니다.' };
+      return { message: trimmedPayload || '알림 내용을 불러올 수 없습니다.' };
     }
   };
 

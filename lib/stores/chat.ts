@@ -84,6 +84,12 @@ export const useChatStore = create<ChatState>((set, get) => {
       return;
     }
 
+    // 연결 시도 중 중복 호출 방지
+    if (state.isConnecting) {
+      console.log('🔍 이미 연결 시도 중, 중복 호출 방지');
+      return;
+    }
+
     console.log('📝 연결 상태를 isConnecting=true로 설정');
     set({ isConnecting: true, connectionError: null });
 
