@@ -172,6 +172,13 @@ export const useAuthStore = create<AuthState>()(
       checkAuth: async () => {
         console.log('🔍 useAuthStore: 인증 상태 확인 시작');
         
+        // 이미 인증된 상태라면 중복 확인 방지
+        const currentState = get();
+        if (currentState.isAuthenticated && currentState.user && currentState.accessToken) {
+          console.log('✅ useAuthStore: 이미 인증된 상태, 중복 확인 방지');
+          return true;
+        }
+        
         try {
           // 로컬 스토리지에서 토큰 확인
           const accessToken = getLocalStorageItem('accessToken');

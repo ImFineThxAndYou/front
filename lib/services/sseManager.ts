@@ -29,6 +29,13 @@ class SSEManager {
       return;
     }
 
+    // 같은 사용자로 이미 연결된 경우 중복 연결 방지
+    const currentUser = useNotificationStore.getState().currentUser;
+    if (currentUser === memberName && this.connectionId) {
+      console.log('⚠️ 같은 사용자로 이미 SSE 연결됨, 중복 연결 방지');
+      return;
+    }
+
     const token = localStorage.getItem('accessToken');
     if (!token) {
       console.log('❌ 액세스 토큰이 없습니다.');

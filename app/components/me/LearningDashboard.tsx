@@ -54,14 +54,14 @@ export default function LearningDashboard() {
     return key;
   };
 
-  // 데이터 로딩
+  // 데이터 로딩 - 의존성 최적화
   useEffect(() => {
     loadDashboardData();
-  }, [selectedPeriod]);
+  }, [selectedPeriod]); // selectedPeriod만 의존성으로
 
   useEffect(() => {
     loadLearningGrass();
-  }, [selectedYear, selectedPeriod]);
+  }, [selectedYear, selectedPeriod]); // selectedYear와 selectedPeriod만 의존성으로
 
   const loadDashboardData = async () => {
     try {

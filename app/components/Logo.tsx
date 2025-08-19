@@ -17,9 +17,9 @@ export default function Logo({ className = '', showText = true, size = 'md', var
   };
 
   const textSizeClasses = {
-    sm: 'w-20 h-5',
-    md: 'w-28 h-7',
-    lg: 'w-36 h-9'
+    sm: 'w-16 h-4',
+    md: 'w-24 h-6',
+    lg: 'w-32 h-8'
   };
 
   const fullSizeClasses = {
@@ -66,8 +66,8 @@ export default function Logo({ className = '', showText = true, size = 'md', var
           <Image
             src="/text-logo.png"
             alt="HowAreYou Text Logo"
-            width={144}
-            height={36}
+            width={128}
+            height={32}
             className="w-full h-full object-contain"
             priority
           />
@@ -95,8 +95,8 @@ export default function Logo({ className = '', showText = true, size = 'md', var
           <Image
             src="/text-logo.png"
             alt="HowAreYou Text Logo"
-            width={144}
-            height={36}
+            width={128}
+            height={32}
             className="w-full h-full object-contain"
             priority
           />

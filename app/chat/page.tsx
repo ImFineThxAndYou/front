@@ -36,18 +36,10 @@ export default function ChatPage() {
     }
   };
 
-  // 채팅 페이지 진입 시 WebSocket 연결 보장
+  // 채팅방 목록 로드 - 페이지 진입 시 한 번만
   useEffect(() => {
-    const ensureWebSocketConnection = async () => {
-      if (user && !isConnected && !isConnecting) {
-        console.log('📡 ChatPage: WebSocket 연결 보장 시도');
-        await connectWebSocket();
-      }
-    };
-
-    ensureWebSocketConnection();
     loadRooms();
-  }, [user, isConnected, isConnecting, connectWebSocket]);
+  }, []); // 빈 의존성 배열 - 페이지 진입 시 한 번만 실행
 
   const handleRoomSelect = (room: ChatRoomSummaryResponse) => {
     console.log('🎯 ChatPage: 채팅방 선택됨:', room.chatRoomId);
