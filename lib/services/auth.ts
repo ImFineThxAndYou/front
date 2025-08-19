@@ -214,7 +214,22 @@ class AuthService {
     try {
       console.log('🔄 토큰 갱신 시도');
       
-      const response = await this.axios.post('/api/auth/refresh');
+      // 현재 사용자 정보에서 membername 가져오기
+      const currentUser = localStorage.getItem('currentUser');
+      let membername = 'google'; // 기본값
+      
+      if (currentUser) {
+        try {
+          const userData = JSON.parse(currentUser);
+          membername = userData.membername || 'google';
+        } catch (e) {
+          console.warn('사용자 정보 파싱 실패, 기본값 사용:', membername);
+        }
+      }
+      
+      console.log('👤 membername으로 토큰 갱신:', membername);
+      
+      const response = await this.axios.post(`/api/auth/refresh?membername=${encodeURIComponent(membername)}`);
       console.log('📡 토큰 갱신 응답:', response.status);
       
       // 응답 헤더에서 Access Token 확인

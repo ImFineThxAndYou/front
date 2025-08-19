@@ -37,8 +37,8 @@ function AuthCallbackContent() {
           try {
             console.log('🔄 OAuth 콜백: OAuth2 토큰 처리 시작');
             
-            // 1. fetch로 리프레싱 요청 (쿠키 자동 포함, 헤더에서 토큰 받기)
-            const response = await fetch('http://localhost:8080/api/auth/refresh', {
+            // 1. fetch로 리프레싱 요청 (membername 포함, 쿠키 자동 포함)
+            const response = await fetch('http://localhost:8080/api/auth/refresh?membername=' + encodeURIComponent(provider || 'google'), {
               method: 'POST',
               credentials: 'include', // 쿠키 포함
               headers: {
