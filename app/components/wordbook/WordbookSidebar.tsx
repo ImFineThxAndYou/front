@@ -46,7 +46,7 @@ export default function WordbookSidebar({
   onQuizStatusChange,
 }: WordbookSidebarProps) {
   const router = useRouter();
-  const { t } = useTranslation(['wordbook', 'common']);
+  const { t } = useTranslation(['wordbook', 'common', 'quiz']);
   
   // 기본값 설정으로 안전한 접근 보장
   const safeQuizStats = quizStats || { total: 0, pending: 0, completed: 0 };

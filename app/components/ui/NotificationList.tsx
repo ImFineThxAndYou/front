@@ -59,22 +59,93 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
     }
   };
 
-  const renderNotification = (notification: NotifyDto) => {
-    let payload: any = {};
-    try {
-      payload = JSON.parse(notification.payload);
-    } catch (error) {
-      payload = { error: '데이터 파싱 실패' };
+  const parsePayload = (payloadString: string) => {
+    if (!payloadString || typeof payloadString !== 'string') {
+      return { message: '알림 내용을 불러올 수 없습니다.' };
     }
 
+    try {
+      // payload가 JSON 문자열인 경우 파싱
+      if (payloadString.trim().startsWith('{') && payloadString.trim().endsWith('}')) {
+        return JSON.parse(payloadString);
+      }
+      
+      // payload가 key=value 형식인 경우 파싱
+      if (payloadString.includes('=')) {
+        const keyValuePairs = payloadString.split(',');
+        const result: any = {};
+        
+        keyValuePairs.forEach(pair => {
+          const trimmedPair = pair.trim();
+          if (trimmedPair.includes('=')) {
+            const [key, value] = trimmedPair.split('=');
+            if (key && value) {
+              result[key.trim()] = value.trim();
+            }
+          }
+        });
+        
+        return result;
+      }
+      
+      // 단순 문자열인 경우
+      return { message: payloadString };
+    } catch (error) {
+      console.error('Payload 파싱 실패:', error, '원본 payload:', payloadString);
+      // 파싱 실패 시 원본 문자열을 message로 반환
+      return { message: payloadString || '알림 내용을 불러올 수 없습니다.' };
+    }
+  };
+
+  const renderNotification = (notification: NotifyDto) => {
+    const payload = parsePayload(notification.payload);
     const isRead = !!notification.readAt;
     const isMarking = isMarkingAsRead === notification.id;
+
+    const getNotificationContent = () => {
+      switch (notification.type) {
+        case 'CHAT':
+          return {
+            icon: '💬',
+            title: '새 메시지',
+            content: payload.massage || payload.message || '새로운 메시지가 도착했습니다.',
+            sender: payload.senderId ? `발신자 ID: ${payload.senderId}` : null,
+            room: payload.chatRoomId ? `채팅방 ID: ${payload.chatRoomId}` : null
+          };
+        case 'SYSTEM':
+          return {
+            icon: '🔔',
+            title: '시스템 알림',
+            content: payload.message || '시스템 알림입니다.',
+            sender: null,
+            room: null
+          };
+        case 'CHATREQ':
+          return {
+            icon: '🤝',
+            title: '채팅 요청',
+            content: payload.message || '새로운 채팅 요청이 있습니다.',
+            sender: payload.requesterName || payload.requesterId ? `요청자: ${payload.requesterName || payload.requesterId}` : null,
+            room: null
+          };
+        default:
+          return {
+            icon: '📢',
+            title: '알림',
+            content: payload.message || '새로운 알림이 있습니다.',
+            sender: null,
+            room: null
+          };
+      }
+    };
+
+    const notificationContent = getNotificationContent();
 
     return (
       <div
         key={notification.id}
         className={`p-4 border-b transition-all duration-200 cursor-pointer hover:bg-opacity-50 ${
-          isRead ? 'opacity-70 bg-gray-50' : 'opacity-100 bg-white'
+          isRead ? 'opacity-70' : 'opacity-100'
         }`}
         style={{
           borderColor: 'var(--border-secondary)',
@@ -84,17 +155,28 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
       >
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <span className="text-lg">{notificationService.getTypeIcon(notification.type)}</span>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+              style={{
+                backgroundColor: isRead ? 'var(--surface-tertiary)' : 'var(--accent-primary-alpha)'
+              }}
+            >
+              {notificationContent.icon}
+            </div>
           </div>
           
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {notificationService.getTypeLabel(notification.type)}
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {notificationContent.title}
                 </span>
                 {!isRead && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                    style={{
+                      backgroundColor: 'var(--accent-primary-alpha)',
+                      color: 'var(--accent-primary)'
+                    }}
+                  >
                     새
                   </span>
                 )}
@@ -109,22 +191,23 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
               </span>
             </div>
             
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {notification.type === 'CHAT' && (
-                <div>
-                  {payload.message && <p className="truncate">{payload.message}</p>}
-                  {payload.senderName && <p className="text-xs text-gray-500">From: {payload.senderName}</p>}
-                </div>
-              )}
+            <div className="space-y-1">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {notificationContent.content}
+              </p>
               
-              {notification.type === 'SYSTEM' && (
-                <p>{payload.message || '시스템 알림'}</p>
-              )}
-              
-              {notification.type === 'CHATREQ' && (
-                <div>
-                  {payload.requesterName && <p className="font-medium">{payload.requesterName}님이 채팅을 요청했습니다</p>}
-                  {payload.message && <p className="text-sm text-gray-600">{payload.message}</p>}
+              {(notificationContent.sender || notificationContent.room) && (
+                <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  {notificationContent.sender && (
+                    <span className="px-2 py-1 rounded-md" style={{ backgroundColor: 'var(--surface-tertiary)' }}>
+                      {notificationContent.sender}
+                    </span>
+                  )}
+                  {notificationContent.room && (
+                    <span className="px-2 py-1 rounded-md" style={{ backgroundColor: 'var(--surface-tertiary)' }}>
+                      {notificationContent.room}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -134,9 +217,9 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
             {isMarking ? (
               <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             ) : !isRead ? (
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--accent-primary)' }}></div>
             ) : (
-              <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--text-tertiary)' }}></div>
             )}
           </div>
         </div>
@@ -146,12 +229,6 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
 
   return (
     <>
-      {/* 배경 오버레이 */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
-        onClick={onClose}
-      />
-      
       {/* 알림 패널 */}
       <div 
         className="fixed top-16 right-4 w-96 max-h-[80vh] bg-white rounded-lg shadow-xl border z-50 overflow-hidden"
@@ -168,12 +245,22 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
               🔔 알림
             </h3>
             {unreadCount > 0 && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                style={{
+                  backgroundColor: 'var(--accent-primary-alpha)',
+                  color: 'var(--accent-primary)'
+                }}
+              >
                 {unreadCount}
               </span>
             )}
             {error && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                style={{
+                  backgroundColor: 'var(--error-alpha)',
+                  color: 'var(--error)'
+                }}
+              >
                 오류
               </span>
             )}
@@ -209,18 +296,24 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
 
         {/* 오류 메시지 */}
         {error && (
-          <div className="p-3 bg-red-50 border-b border-red-200">
+          <div className="p-3 border-b"
+            style={{
+              backgroundColor: 'var(--error-alpha)',
+              borderColor: 'var(--error)'
+            }}
+          >
             <div className="flex items-center space-x-2">
-              <i className="ri-error-warning-line text-red-500"></i>
-              <span className="text-sm text-red-700">
+              <i className="ri-error-warning-line" style={{ color: 'var(--error)' }}></i>
+              <span className="text-sm" style={{ color: 'var(--error)' }}>
                 {error}
               </span>
               <button
                 onClick={clearError}
-                className="ml-auto p-1 hover:bg-red-100 rounded"
+                className="ml-auto p-1 hover:bg-opacity-50 rounded"
                 title="오류 메시지 닫기"
+                style={{ color: 'var(--error)' }}
               >
-                <i className="ri-close-line text-red-500"></i>
+                <i className="ri-close-line"></i>
               </button>
             </div>
           </div>
@@ -242,7 +335,7 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
                 {error ? '백엔드 연결 오류로 알림을 불러올 수 없습니다.' : '알림이 없습니다.'}
               </p>
               {error && (
-                <p className="text-xs text-red-500 mt-2">
+                <p className="text-xs mt-2" style={{ color: 'var(--error)' }}>
                   네트워크 연결을 확인해주세요.
                 </p>
               )}
@@ -257,7 +350,11 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
                   <button
                     onClick={loadMoreNotifications}
                     disabled={isLoading}
-                    className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                    className="px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50"
+                    style={{
+                      color: 'var(--accent-primary)',
+                      backgroundColor: 'var(--accent-primary-alpha)'
+                    }}
                   >
                     {isLoading ? '로딩 중...' : '더 보기'}
                   </button>
@@ -272,7 +369,7 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
           <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
             총 {notifications.length}개의 알림
             {unreadCount > 0 && (
-              <span className="ml-2 text-blue-600">
+              <span className="ml-2" style={{ color: 'var(--accent-primary)' }}>
                 (읽지 않은 {unreadCount}개)
               </span>
             )}

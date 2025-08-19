@@ -1,163 +1,220 @@
-# Hay v2 - 언어 학습 플랫폼
+# HowAreYou - 언어 학습 플랫폼
 
-이 프로젝트는 [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app)으로 부트스트랩된 [Next.js](https://nextjs.org) 프로젝트입니다.
+Next.js 15 기반의 현대적인 언어 학습 웹 애플리케이션입니다.
 
-## 🚀 빠른 시작
+## 🚀 주요 기능
 
-### 필수 요구사항
+- **퀴즈 시스템**: 랜덤/데일리 퀴즈로 단어 학습
+- **실시간 채팅**: 언어 교환을 위한 채팅 기능
+- **단어장 관리**: 개인화된 단어장 시스템
+- **다국어 지원**: 한국어/영어 지원
+- **반응형 디자인**: 모바일/데스크톱 최적화
 
-- Node.js 18.0 이상
-- npm, yarn, pnpm 또는 bun
+## 🛠️ 기술 스택
 
-### 설치 방법
+### Frontend
+- **Framework**: Next.js 15.3.2
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **Internationalization**: i18next
+- **HTTP Client**: Axios
+- **Real-time**: WebSocket (STOMP)
 
-1. **저장소 클론**
-   ```bash
-   git clone <your-repository-url>
-   cd hay_v2
-   ```
+### Backend
+- **Framework**: Spring Boot (Java)
+- **Database**: PostgreSQL
+- **Authentication**: JWT + OAuth2
+- **Real-time**: SSE (Server-Sent Events)
 
-2. **의존성 설치**
-   ```bash
-   npm install
-   # 또는
-   yarn install
-   # 또는
-   pnpm install
-   # 또는
-   bun install
-   ```
+## 📦 설치 및 실행
+
+### 1. 환경 설정
+
+```bash
+# 의존성 설치
+npm install
+
+# 환경 변수 설정
+cp env.example .env.local
+```
+
+### 2. 개발 서버 실행
+
+```bash
+# 개발 모드
+npm run dev
+
+# 타입 체크
+npm run type-check
+
+# 린트 검사
+npm run lint
+```
+
+### 3. 빌드
+
+```bash
+# 프로덕션 빌드
+npm run build
+
+# 빌드 분석
+npm run build:analyze
+
+# 프로덕션 서버 실행
+npm start
+```
+
+## 🌍 환경 변수
+
+### 필수 환경 변수
+
+```env
+# API 서버 URL
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+
+# WebSocket 서버 URL
+NEXT_PUBLIC_WS_BASE_URL=http://localhost:8080
+
+# 애플리케이션 설정
+NEXT_PUBLIC_APP_NAME=HowAreYou
+NEXT_PUBLIC_APP_VERSION=2.0.0
+NEXT_PUBLIC_ENVIRONMENT=development
+```
+
+### 프로덕션 환경 변수
+
+```env
+# 프로덕션 API 서버
+NEXT_PUBLIC_API_BASE_URL=https://api.your-domain.com
+NEXT_PUBLIC_WS_BASE_URL=https://api.your-domain.com
+NEXT_PUBLIC_ENVIRONMENT=production
+```
+
+## 🚀 배포
+
+### AWS Amplify 배포
+
+1. **GitHub 저장소 연결**
+   - AWS Amplify 콘솔에서 새 앱 생성
+   - GitHub 저장소 연결
+
+2. **빌드 설정**
+   - `amplify.yml` 파일이 자동으로 사용됨
+   - 환경 변수 설정 필요
 
 3. **환경 변수 설정**
-   
-   루트 디렉토리에 `.env.local` 파일을 생성하세요:
    ```bash
-   cp .env.example .env.local
-   # 또는 수동으로 생성
-   touch .env.local
-   ```
-   
-   `.env.local`에 다음 환경 변수들을 추가하세요:
-   ```env
-   # 데이터베이스
-   DATABASE_URL=your_database_connection_string
-   
-   # 인증
-   NEXTAUTH_SECRET=your_nextauth_secret
-   NEXTAUTH_URL=http://localhost:3000
-   
-   # 외부 API (필요한 경우)
-   OPENAI_API_KEY=your_openai_api_key
-   
-   # 기타 서비스
-   REDIS_URL=your_redis_url
+   NEXT_PUBLIC_API_BASE_URL=https://your-api-domain.com
+   NEXT_PUBLIC_WS_BASE_URL=https://your-api-domain.com
+   NEXT_PUBLIC_ENVIRONMENT=production
    ```
 
-4. **개발 서버 실행**
-   ```bash
-   npm run dev
-   # 또는
-   yarn dev
-   # 또는
-   pnpm dev
-   # 또는
-   bun dev
-   ```
+### 수동 배포
 
-5. **브라우저 열기**
-   
-   [http://localhost:3000](http://localhost:3000)으로 이동하여 애플리케이션을 확인하세요.
+```bash
+# 프로덕션 빌드
+npm run build
+
+# 정적 파일 생성 (필요시)
+npm run export
+
+# 서버 배포
+npm start
+```
 
 ## 📁 프로젝트 구조
 
 ```
 hay_v2/
-├── app/                    # Next.js 앱 디렉토리
-│   ├── auth/              # 인증 페이지
-│   ├── chat/              # 채팅 기능
-│   ├── components/        # 재사용 가능한 컴포넌트
-│   ├── explore/           # 탐색/발견 페이지
-│   ├── me/                # 사용자 프로필 및 설정
-│   └── wordbook/          # 어휘 관리
-├── lib/                   # 유틸리티 라이브러리
-│   ├── hooks/             # 커스텀 React 훅
+├── app/                    # Next.js App Router
+│   ├── components/         # 재사용 가능한 컴포넌트
+│   ├── quiz/              # 퀴즈 관련 페이지
+│   ├── chat/              # 채팅 관련 페이지
+│   └── wordbook/          # 단어장 관련 페이지
+├── lib/                   # 유틸리티 및 설정
 │   ├── services/          # API 서비스
-│   ├── stores/            # 상태 관리
-│   └── types/             # TypeScript 타입 정의
+│   ├── stores/            # Zustand 스토어
+│   ├── hooks/             # 커스텀 훅
+│   └── i18n/              # 국제화 설정
+├── public/                # 정적 파일
 └── docs/                  # 문서
 ```
 
-## 🛠️ 사용 가능한 스크립트
+## 🔧 개발 가이드
 
-- `npm run dev` - 개발 서버 시작
-- `npm run build` - 프로덕션용 빌드
-- `npm run start` - 프로덕션 서버 시작
-- `npm run lint` - ESLint 실행
-- `npm run type-check` - TypeScript 타입 검사 실행
+### 코드 스타일
 
-## 🔧 설정
+- **Import 경로**: 절대 경로 사용 (`@/lib/services/...`)
+- **TypeScript**: 엄격한 타입 체크 활성화
+- **컴포넌트**: 함수형 컴포넌트 + TypeScript
+- **상태 관리**: Zustand 사용
 
-### 환경 변수
+### API 통신
 
-다음 환경 변수들이 필요합니다:
+```typescript
+// 서비스 레이어 사용
+import { quizService } from '@/lib/services/quizService';
 
-| 변수 | 설명 | 필수 여부 |
-|------|------|-----------|
-| `DATABASE_URL` | 데이터베이스 연결 문자열 | 예 |
-| `NEXTAUTH_SECRET` | NextAuth.js 시크릿 키 | 예 |
-| `NEXTAUTH_URL` | 애플리케이션 URL | 예 |
+const quizzes = await quizService.getMyQuizzes(0, 20);
+```
 
-### 데이터베이스 설정
+### 국제화
 
-1. 데이터베이스가 실행 중이고 접근 가능한지 확인
-2. `.env.local` 파일에서 `DATABASE_URL` 업데이트
-3. 해당하는 경우 데이터베이스 마이그레이션 실행
+```typescript
+// 번역 훅 사용
+import { useTranslation } from '@/lib/hooks/useTranslation';
 
-## 🚨 문제 해결
+const { t } = useTranslation(['quiz', 'common']);
+const message = t('quiz.history');
+```
 
-### 자주 발생하는 문제
+## 🐛 문제 해결
 
-1. **포트가 이미 사용 중**
+### 빌드 오류
+
+1. **TypeScript 오류**
    ```bash
-   # 포트 3000을 사용하는 프로세스 종료
-   lsof -ti:3000 | xargs kill -9
+   npm run type-check
    ```
 
-2. **의존성을 찾을 수 없음**
+2. **캐시 정리**
    ```bash
-   # 캐시 삭제 후 재설치
+   npm run clean
+   ```
+
+3. **의존성 재설치**
+   ```bash
    rm -rf node_modules package-lock.json
    npm install
    ```
 
-3. **환경 변수가 로드되지 않음**
-   - `.env.local`이 루트 디렉토리에 있는지 확인
-   - 변수 추가 후 개발 서버 재시작
+### 환경 변수 문제
 
-### 도움 받기
+- `.env.local` 파일이 올바르게 설정되었는지 확인
+- 환경 변수 이름이 `NEXT_PUBLIC_`으로 시작하는지 확인
 
-문제가 발생하면:
+## 📝 변경 사항
 
-1. [Next.js 문서](https://nextjs.org/docs) 확인
-2. 프로젝트의 이슈 트래커 검토
-3. 모든 환경 변수가 올바르게 설정되었는지 확인
-
-## 📚 더 알아보기
-
-Next.js에 대해 더 자세히 알아보려면 다음 리소스를 참고하세요:
-
-- [Next.js 문서](https://nextjs.org/docs) - Next.js 기능과 API에 대해 알아보기
-- [Next.js 학습하기](https://nextjs.org/learn) - 인터랙티브 Next.js 튜토리얼
-
-[Next.js GitHub 저장소](https://github.com/vercel/next.js)도 확인해보세요 - 여러분의 피드백과 기여를 환영합니다!
+### v2.0.0 (2025-01-19)
+- Next.js 15 업그레이드
+- TypeScript 설정 개선
+- AWS Amplify 배포 설정 추가
+- 코드 일관성 개선
+- 에러 처리 강화
 
 ## 🤝 기여하기
 
-1. 저장소 포크
-2. 기능 브랜치 생성
-3. 변경사항 작성
-4. 풀 리퀘스트 제출
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 라이선스
 
-이 프로젝트는 MIT 라이선스 하에 제공됩니다.
+이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+
+## 📞 지원
+
+문제가 발생하거나 질문이 있으시면 이슈를 생성해 주세요.

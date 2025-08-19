@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { quizService, QuizResult, QuizStatus } from '../../../lib/services/quizService';
-import MainLayout from '../../../components/layout/MainLayout';
-import { useTranslation } from '../../../lib/hooks/useTranslation';
-import QuizCard from '../../../components/quiz/QuizCard';
+import { quizService, QuizResult, QuizStatus } from '@/lib/services/quizService';
+import MainLayout from '@/app/components/layout/MainLayout';
+import { useTranslation } from '@/lib/hooks/useTranslation';
 
-export default function QuizHistoryPage() {
+function QuizHistoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useTranslation(['quiz', 'common']);
@@ -74,11 +73,83 @@ export default function QuizHistoryPage() {
     }
   };
 
+  // Utility functions
+  const getStatusConfig = (status: string) => {
+    if (status === 'PENDING') {
+      return {
+        label: t('quiz.status.pending'),
+        color: 'var(--warning)',
+        bg: 'rgba(245, 158, 11, 0.1)',
+        icon: 'ri-time-line'
+      };
+    }
+    return {
+      label: t('quiz.status.submit'),
+      color: 'var(--success)',
+      bg: 'rgba(34, 197, 94, 0.1)',
+      icon: 'ri-check-circle-line'
+    };
+  };
 
+  const getScoreConfig = (score: number) => {
+    if (score >= 90) return { 
+      color: 'var(--success)', 
+      grade: 'A', 
+      emoji: '🏆',
+      bg: 'rgba(34, 197, 94, 0.1)'
+    };
+    if (score >= 70) return { 
+      color: 'var(--info)', 
+      grade: 'B', 
+      emoji: '👍',
+      bg: 'rgba(59, 130, 246, 0.1)'
+    };
+    if (score >= 50) return { 
+      color: 'var(--warning)', 
+      grade: 'C', 
+      emoji: '📚',
+      bg: 'rgba(245, 158, 11, 0.1)'
+    };
+    return { 
+      color: 'var(--danger)', 
+      grade: 'D', 
+      emoji: '💪',
+      bg: 'rgba(239, 68, 68, 0.1)'
+    };
+  };
 
+  const getQuizTypeLabel = (quiz: QuizResult) => {
+    if (quiz.quizType === 'DAILY') {
+      return {
+        label: t('quiz.types.daily'),
+        emoji: '📅',
+        description: quiz.dailyDate ? `${quiz.dailyDate} ${t('quiz.dailyWords')}` : t('quiz.todayWords'),
+        sublabel: t('quiz.dailyWords'),
+        color: 'var(--primary)',
+        icon: 'ri-calendar-line'
+      };
+    }
+    return {
+      label: t('quiz.types.random'),
+      emoji: '🎲',
+      description: t('quiz.allWords'),
+      sublabel: t('quiz.allWords'),
+      color: 'var(--secondary)',
+      icon: 'ri-shuffle-line'
+    };
+  };
 
-
-
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return t('common.today');
+    if (diffDays === 2) return t('common.yesterday');
+    if (diffDays <= 7) return t('common.daysAgo', { days: diffDays - 1 });
+    return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  };
 
   const filterOptions = [
     { value: 'ALL', label: t('quiz.status.all'), icon: 'ri-list-unordered' },
@@ -241,8 +312,11 @@ export default function QuizHistoryPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {quizzes.map((quiz) => (
-
+              {quizzes.map((quiz) => {
+                const statusConfig = getStatusConfig(quiz.status);
+                const typeInfo = getQuizTypeLabel(quiz);
+                const scoreConfig = quiz.status === 'SUBMIT' ? getScoreConfig(quiz.score) : null;
+                
                 return (
                   <div
                     key={quiz.quizUUID}
@@ -338,7 +412,7 @@ export default function QuizHistoryPage() {
                                 <div className="flex items-center gap-1">
                                   <span className="text-lg">{scoreConfig?.emoji}</span>
                                   <span 
-                                    className="font-bold"
+                                    className="font-semibold"
                                     style={{ color: scoreConfig?.color }}
                                   >
                                     {quiz.score}점
@@ -347,35 +421,6 @@ export default function QuizHistoryPage() {
                               </>
                             )}
                           </div>
-
-                          {/* Progress Bar for Completed Quizzes */}
-                          {quiz.status === 'SUBMIT' && (
-                            <div className="mb-4">
-                              <div className="flex items-center justify-between text-xs mb-2">
-                                <span style={{ color: 'var(--text-secondary)' }}>
-                                  정답률
-                                </span>
-                                <span 
-                                  className="font-medium"
-                                  style={{ color: scoreConfig?.color }}
-                                >
-                                  {quiz.accuracy?.toFixed(1)}%
-                                </span>
-                              </div>
-                              <div 
-                                className="w-full h-2 rounded-full overflow-hidden"
-                                style={{ backgroundColor: 'var(--surface-secondary)' }}
-                              >
-                                <div
-                                  className="h-full rounded-full transition-all duration-500"
-                                  style={{ 
-                                    width: `${quiz.accuracy}%`,
-                                    backgroundColor: scoreConfig?.color
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )}
                         </div>
 
                         {/* Right Actions */}
@@ -425,7 +470,12 @@ export default function QuizHistoryPage() {
                               </div>
                             </>
                           )}
-                          
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -484,5 +534,20 @@ export default function QuizHistoryPage() {
         </div>
       </div>
     </MainLayout>
+  );
+}
+
+export default function QuizHistoryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p>로딩 중...</p>
+        </div>
+      </div>
+    }>
+      <QuizHistoryContent />
+    </Suspense>
   );
 }

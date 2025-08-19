@@ -39,18 +39,30 @@ export default function MePage() {
 
   return (
     <MainLayout>
-      <div className="flex h-full theme-transition max-w-7xl mx-auto">
+      <div 
+        className="flex h-full theme-transition"
+        style={{
+          background: `linear-gradient(135deg, 
+            var(--bg-primary) 0%, 
+            var(--bg-secondary) 25%, 
+            var(--bg-tertiary) 50%, 
+            var(--bg-secondary) 75%, 
+            var(--bg-primary) 100%)`
+        }}
+      >
         {/* Sidebar */}
-        <div className="w-80 backdrop-blur-xl border-r theme-transition flex-shrink-0"
+        <div 
+          className="w-80 border-r h-full flex-shrink-0 backdrop-blur-xl theme-transition"
           style={{
             backgroundColor: 'var(--surface-primary)',
-            borderColor: 'var(--border-primary)'
+            borderColor: 'var(--border-primary)',
+            boxShadow: 'var(--shadow-lg)'
           }}
         >
-          <div className="p-8 h-full flex flex-col">
+          <div className="p-6 h-full flex flex-col">
             {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold mb-2"
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold mb-2 flex items-center gap-3"
                 style={{
                   background: 'linear-gradient(135deg, var(--text-primary), var(--text-secondary))',
                   WebkitBackgroundClip: 'text',
@@ -58,6 +70,7 @@ export default function MePage() {
                   backgroundClip: 'text'
                 }}
               >
+                <span className="text-3xl">👤</span>
                 {t('title')}
               </h1>
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -136,9 +149,9 @@ export default function MePage() {
           </div>
         </div>
 
-        {/* Main Content - Centered */}
-        <div className="flex-1 overflow-y-auto flex justify-center">
-          <div className="w-full max-w-4xl p-8">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col h-full min-w-0 relative">
+          <div className="flex-1 overflow-y-auto p-8">
             {renderContent()}
           </div>
         </div>

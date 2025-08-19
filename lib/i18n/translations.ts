@@ -407,6 +407,7 @@ export const translations = {
     },
     wordbook: {
       title: '단어장',
+      words: '단어',
       addWord: '단어 추가',
       search: {
         placeholder: '단어나 의미로 검색...'
@@ -1011,6 +1012,7 @@ export const translations = {
     },
     wordbook: {
       title: 'Wordbook',
+      words: 'Words',
       addWord: 'Add Word',
       search: {
         placeholder: 'Search by word or meaning...'
