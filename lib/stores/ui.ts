@@ -1,7 +1,6 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import i18n from '../i18n';
 
 interface Toast {
   id: string;
@@ -65,10 +64,6 @@ export const useUIStore = create<UIState>()(
       setLanguage: (language) => {
         console.log('UI Store - Setting language to:', language);
         set({ language });
-        if (typeof window !== 'undefined') {
-          console.log('UI Store - Calling i18n.changeLanguage:', language);
-          i18n.changeLanguage(language);
-        }
       },
 
       showToast: (toast) => {

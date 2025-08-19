@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../../lib/stores/auth';
 import { useUIStore } from '../../../lib/stores/ui';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
@@ -16,6 +17,7 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onMenuClick }: TopBarProps) {
+  const router = useRouter();
   const { user, logout } = useAuthStore();
   const { theme, setTheme, language, setLanguage } = useUIStore();
   const { t } = useTranslation('common');
@@ -32,6 +34,16 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
     const newLanguage = language === 'ko' ? 'en' : 'ko';
     console.log('TopBar - Toggling language from', language, 'to', newLanguage);
     setLanguage(newLanguage);
+  };
+
+  const handleProfileClick = () => {
+    setShowProfileMenu(false);
+    router.push('/me?tab=profile');
+  };
+
+  const handleSettingsClick = () => {
+    setShowProfileMenu(false);
+    router.push('/me?tab=settings');
   };
 
   // SSE 연결 상태에 따른 아이콘과 색상 결정
@@ -276,6 +288,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
                   
                   <div className="relative z-10">
                     <button 
+                      onClick={handleProfileClick}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-opacity-50 transition-all duration-200 cursor-pointer whitespace-nowrap flex items-center rounded-lg mx-2"
                       style={{ 
                         color: 'var(--text-secondary)',
@@ -292,6 +305,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
                     </button>
                     
                     <button 
+                      onClick={handleSettingsClick}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-opacity-50 transition-all duration-200 cursor-pointer whitespace-nowrap flex items-center rounded-lg mx-2"
                       style={{ 
                         color: 'var(--text-secondary)',

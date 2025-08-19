@@ -1,6 +1,16 @@
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// 환경별 API 베이스 URL 설정
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    // 클라이언트 사이드
+    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+  }
+  // 서버 사이드
+  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+};
+
+const API_BASE = getApiBaseUrl();
 
 // 퀴즈 타입 정의
 export type QuizLevel = 'A' | 'B' | 'C';
@@ -70,6 +80,12 @@ export interface QuizListResponse {
 
 class QuizService {
   private getAuthHeaders() {
+    if (typeof window === 'undefined') {
+      return {
+        'Content-Type': 'application/json',
+      };
+    }
+    
     const token = localStorage.getItem('accessToken');
     return {
       'Authorization': `Bearer ${token}`,
@@ -77,54 +93,59 @@ class QuizService {
     };
   }
 
+  private async makeRequest<T>(config: any): Promise<T> {
+    try {
+      const response = await axios(config);
+      return response.data;
+    } catch (error: any) {
+      console.error('QuizService API Error:', error);
+      if (error.response?.status === 401) {
+        // 인증 오류 처리
+        localStorage.removeItem('accessToken');
+        window.location.href = '/';
+      }
+      throw error;
+    }
+  }
+
   // 전체 랜덤 퀴즈 시작
   async startRandomQuiz(level?: QuizLevel): Promise<QuizStartResponse> {
     const params = level ? { level } : {};
-    const response = await axios.post(
-      `${API_BASE}/api/quiz/random/start`,
-      {},
-      {
-        headers: this.getAuthHeaders(),
-        params
-      }
-    );
-    return response.data;
+    return this.makeRequest<QuizStartResponse>({
+      method: 'POST',
+      url: `${API_BASE}/api/quiz/random/start`,
+      headers: this.getAuthHeaders(),
+      params
+    });
   }
 
   // 데일리 퀴즈 시작
   async startDailyQuiz(date: string): Promise<QuizStartResponse> {
-    const response = await axios.post(
-      `${API_BASE}/api/quiz/daily/start`,
-      {},
-      {
-        headers: this.getAuthHeaders(),
-        params: { date }
-      }
-    );
-    return response.data;
+    return this.makeRequest<QuizStartResponse>({
+      method: 'POST',
+      url: `${API_BASE}/api/quiz/daily/start`,
+      headers: this.getAuthHeaders(),
+      params: { date }
+    });
   }
 
   // 퀴즈 제출
   async submitQuiz(quizUUID: string, selectedIndexes: number[]): Promise<SubmitResponse> {
-    const response = await axios.post(
-      `${API_BASE}/api/quiz/${quizUUID}/submit`,
-      { selectedIndexes },
-      {
-        headers: this.getAuthHeaders()
-      }
-    );
-    return response.data;
+    return this.makeRequest<SubmitResponse>({
+      method: 'POST',
+      url: `${API_BASE}/api/quiz/${quizUUID}/submit`,
+      headers: this.getAuthHeaders(),
+      data: { selectedIndexes }
+    });
   }
 
   // 퀴즈 단건 조회 (재시험용)
   async getQuiz(quizUUID: string): Promise<QuizResult> {
-    const response = await axios.get(
-      `${API_BASE}/api/quiz/${quizUUID}`,
-      {
-        headers: this.getAuthHeaders()
-      }
-    );
-    return response.data;
+    return this.makeRequest<QuizResult>({
+      method: 'GET',
+      url: `${API_BASE}/api/quiz/${quizUUID}`,
+      headers: this.getAuthHeaders()
+    });
   }
 
   // 내 퀴즈 목록 조회
@@ -136,14 +157,12 @@ class QuizService {
     const params: any = { page, size };
     if (status) params.status = status;
 
-    const response = await axios.get(
-      `${API_BASE}/api/quiz/me`,
-      {
-        headers: this.getAuthHeaders(),
-        params
-      }
-    );
-    return response.data;
+    return this.makeRequest<QuizListResponse>({
+      method: 'GET',
+      url: `${API_BASE}/api/quiz/me`,
+      headers: this.getAuthHeaders(),
+      params
+    });
   }
 }
 

@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuthStore } from '../../../lib/stores/auth';
+import { useAuthStore } from '@/lib/stores/auth';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setUser, setAccessToken, user } = useAuthStore();
@@ -33,7 +33,7 @@ export default function AuthCallbackPage() {
             
             // axios 인터셉터가 자동으로 토큰 갱신을 처리하므로
             // 간단한 API 호출로 토큰 갱신 트리거
-            const { authService } = await import('../../../lib/services/auth');
+            const { authService } = await import('@/lib/services/auth');
             const profile = await authService.getMyProfile();
             
             // 사용자 정보와 토큰 설정
@@ -129,4 +129,20 @@ export default function AuthCallbackPage() {
   }
 
   return null;
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center bg-white p-8 rounded-2xl shadow-xl border border-blue-200">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">인증 처리 중</h1>
+          <p className="text-gray-600">잠시만 기다려주세요...</p>
+        </div>
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
+  );
 }

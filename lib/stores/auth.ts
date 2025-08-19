@@ -27,7 +27,7 @@ interface AuthState {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   googleLogin: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   setUser: (user: User) => void;
   setAccessToken: (token: string) => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -89,12 +89,41 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
-        // 로컬 스토리지와 axios 헤더 정리
+      logout: async () => {
+        console.log('🚪 useAuthStore: 로그아웃 시작');
+        
+        try {
+          // 백엔드에 로그아웃 요청
+          await authService.logout();
+          console.log('✅ useAuthStore: 백엔드 로그아웃 성공');
+        } catch (error) {
+          console.error('❌ useAuthStore: 백엔드 로그아웃 실패:', error);
+          // 백엔드 로그아웃 실패해도 로컬 정리는 진행
+        }
+        
+        // 로컬 스토리지 완전 정리
         localStorage.removeItem('accessToken');
         localStorage.removeItem('currentUser');
-        console.log('🗑️ useAuthStore: localStorage에서 currentUser 제거');
-        set({ user: null, accessToken: null, isAuthenticated: false });
+        localStorage.removeItem('auth-storage');
+        localStorage.removeItem('ui-storage');
+        localStorage.removeItem('chat-storage');
+        localStorage.removeItem('wordbook-storage');
+        localStorage.removeItem('explore-storage');
+        
+        // axios 헤더에서 토큰 제거
+        delete authService.axios?.defaults.headers.common['Authorization'];
+        
+        // Zustand 상태 초기화
+        set({ 
+          user: null, 
+          accessToken: null, 
+          isAuthenticated: false 
+        });
+        
+        console.log('🗑️ useAuthStore: 로컬 스토리지 및 상태 정리 완료');
+        
+        // 페이지 새로고침으로 완전한 초기화
+        window.location.href = '/';
       },
 
       setUser: (user: User) => {

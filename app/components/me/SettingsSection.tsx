@@ -19,11 +19,6 @@ interface Settings {
     allowSearchByInterests: boolean;
     autoTranslate: boolean;
   };
-  experimental: {
-    autoWordExtraction: boolean;
-    voiceMessages: boolean;
-    aiRecommendations: boolean;
-  };
 }
 
 export default function SettingsSection() {
@@ -42,11 +37,6 @@ export default function SettingsSection() {
       showOnlineStatus: true,
       allowSearchByInterests: true,
       autoTranslate: false
-    },
-    experimental: {
-      autoWordExtraction: false,
-      voiceMessages: false,
-      aiRecommendations: true
     }
   });
 
@@ -122,8 +112,8 @@ export default function SettingsSection() {
               }
             }}
           >
-                            <i className="ri-save-line w-4 h-4 mr-2 inline text-base"></i>
-                              {isSaving ? t('common.saving') : t('common.save')}
+            <i className="ri-save-line w-4 h-4 mr-2 inline text-base"></i>
+            {isSaving ? t('common.saving') : t('common.save')}
           </button>
         )}
       </div>
@@ -141,7 +131,7 @@ export default function SettingsSection() {
             className="text-lg font-semibold mb-4 flex items-center"
             style={{ color: 'var(--text-primary)' }}
           >
-                            <i className="ri-global-line w-5 h-5 mr-2 text-lg"></i>
+            <i className="ri-global-line w-5 h-5 mr-2 text-lg"></i>
             {t('settings.appearance')}
           </h3>
 
@@ -196,7 +186,7 @@ export default function SettingsSection() {
                   }}
                 >
                   <i className="ri-sun-line w-4 h-4 mr-2 text-base"></i>
-                                      {t('settings.lightTheme')}
+                  {t('settings.lightTheme')}
                 </button>
                 <button
                   onClick={() => setTheme('dark')}
@@ -218,7 +208,7 @@ export default function SettingsSection() {
                   }}
                 >
                   <i className="ri-moon-line w-4 h-4 mr-2 text-base"></i>
-                                      {t('settings.darkTheme')}
+                  {t('settings.darkTheme')}
                 </button>
               </div>
             </div>
@@ -237,7 +227,7 @@ export default function SettingsSection() {
             className="text-lg font-semibold mb-4 flex items-center"
             style={{ color: 'var(--text-primary)' }}
           >
-                            <i className="ri-notification-line w-5 h-5 mr-2 text-lg"></i>
+            <i className="ri-notification-line w-5 h-5 mr-2 text-lg"></i>
             {t('settings.notifications')}
           </h3>
 
@@ -376,7 +366,7 @@ export default function SettingsSection() {
             className="text-lg font-semibold mb-4 flex items-center"
             style={{ color: 'var(--text-primary)' }}
           >
-                            <i className="ri-shield-check-line w-5 h-5 mr-2 text-lg"></i>
+            <i className="ri-shield-check-line w-5 h-5 mr-2 text-lg"></i>
             {t('settings.privacy')}
           </h3>
 
@@ -463,7 +453,7 @@ export default function SettingsSection() {
           </div>
         </div>
 
-        {/* Experimental Features */}
+        {/* Account Management */}
         <div 
           className="rounded-xl border p-6"
           style={{
@@ -475,8 +465,8 @@ export default function SettingsSection() {
             className="text-lg font-semibold mb-4 flex items-center"
             style={{ color: 'var(--text-primary)' }}
           >
-                            <i className="ri-flashlight-line w-5 h-5 mr-2 text-lg"></i>
-            {t('settings.experimental')}
+            <i className="ri-user-settings-line w-5 h-5 mr-2 text-lg"></i>
+            {t('danger.title')}
           </h3>
 
           <div className="space-y-4">
@@ -486,47 +476,31 @@ export default function SettingsSection() {
                   className="text-sm font-medium"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {t('settings.autoWordExtraction')}
-                  <span 
-                    className="ml-2 px-2 py-1 text-xs rounded-full"
-                    style={{
-                      backgroundColor: 'var(--accent-success)',
-                      color: 'var(--text-on-accent)'
-                    }}
-                  >
-                    BETA
-                  </span>
+                  {t('danger.dataExport')}
                 </h4>
                 <p 
                   className="text-sm"
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  {t('settings.autoWordExtractionDesc')}
+                  {t('danger.dataExportDesc')}
                 </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.experimental.autoWordExtraction}
-                  onChange={(e) => handleSettingChange('experimental', 'autoWordExtraction', e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div 
-                  className="w-11 h-6 peer-focus:outline-none peer-focus:ring-4 rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:border after:rounded-full after:h-5 after:w-5 after:transition-all"
-                  style={{
-                    backgroundColor: settings.experimental.autoWordExtraction ? 'var(--accent-primary)' : 'var(--surface-secondary)',
-                    borderColor: 'var(--border-primary)'
-                  }}
-                >
-                  <div 
-                    className="absolute top-[2px] left-[2px] w-5 h-5 rounded-full transition-all"
-                    style={{
-                      backgroundColor: 'var(--text-on-accent)',
-                      transform: settings.experimental.autoWordExtraction ? 'translateX(20px)' : 'translateX(0)'
-                    }}
-                  />
-                </div>
-              </label>
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: 'var(--info)',
+                  color: 'var(--text-on-accent)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--info-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--info)';
+                }}
+              >
+                <i className="ri-download-line w-4 h-4 mr-2 inline text-base"></i>
+                {t('danger.downloadData')}
+              </button>
             </div>
 
             <div className="flex items-center justify-between">
@@ -535,38 +509,64 @@ export default function SettingsSection() {
                   className="text-sm font-medium"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {t('settings.aiRecommendations')}
+                  {t('danger.logoutAllDevices')}
                 </h4>
                 <p 
                   className="text-sm"
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  {t('settings.aiRecommendationsDesc')}
+                  {t('danger.logoutAllDevicesDesc')}
                 </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.experimental.aiRecommendations}
-                  onChange={(e) => handleSettingChange('experimental', 'aiRecommendations', e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div 
-                  className="w-11 h-6 peer-focus:outline-none peer-focus:ring-4 rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:border after:rounded-full after:h-5 after:w-5 after:transition-all"
-                  style={{
-                    backgroundColor: settings.experimental.aiRecommendations ? 'var(--accent-primary)' : 'var(--surface-secondary)',
-                    borderColor: 'var(--border-primary)'
-                  }}
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: 'var(--warning)',
+                  color: 'var(--text-on-accent)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--warning-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--warning)';
+                }}
+              >
+                <i className="ri-logout-box-line w-4 h-4 mr-2 inline text-base"></i>
+                {t('danger.logoutAll')}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--text-primary)' }}
                 >
-                  <div 
-                    className="absolute top-[2px] left-[2px] w-5 h-5 rounded-full transition-all"
-                    style={{
-                      backgroundColor: 'var(--text-on-accent)',
-                      transform: settings.experimental.aiRecommendations ? 'translateX(20px)' : 'translateX(0)'
-                    }}
-                  />
-                </div>
-              </label>
+                  {t('danger.deleteAccount')}
+                </h4>
+                <p 
+                  className="text-sm"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {t('danger.deleteAccountDesc')}
+                </p>
+              </div>
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: 'var(--error)',
+                  color: 'var(--text-on-accent)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--error-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--error)';
+                }}
+              >
+                <i className="ri-delete-bin-line w-4 h-4 mr-2 inline text-base"></i>
+                {t('danger.confirmDelete')}
+              </button>
             </div>
           </div>
         </div>

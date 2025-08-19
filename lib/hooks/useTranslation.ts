@@ -20,20 +20,23 @@ export const useTranslation = (namespace?: string | string[]) => {
     }
   }, [language, setLanguage]);
   
-  const t = useCallback((key: string) => {
+  const t = useCallback((key: string, params?: Record<string, any>) => {
     const currentLang = language || 'ko';
     
+    // 번역 소스 가져오기
     const translationSource = translations[currentLang as keyof typeof translations];
+    if (!translationSource) {
+      console.error('번역 소스를 찾을 수 없습니다:', currentLang);
+      return key;
+    }
     
-    // Handle namespace - try multiple namespaces if array is provided
+    // 네임스페이스 처리
     if (namespace) {
       if (Array.isArray(namespace)) {
-        // Try each namespace in order until we find a translation
+        // 여러 네임스페이스에서 순서대로 찾기
         for (const ns of namespace) {
           const nsSource = translationSource[ns as keyof typeof translationSource] as any;
-          
           if (nsSource) {
-            // Navigate through nested translation object
             const keys = key.split('.');
             let value: any = nsSource;
             
@@ -41,19 +44,15 @@ export const useTranslation = (namespace?: string | string[]) => {
               value = value?.[k];
             }
             
-            if (value) {
-              return value;
+            if (value && typeof value === 'string') {
+              return params ? replaceParams(value, params) : value;
             }
           }
         }
-        // If no translation found in any namespace, fall back to key
-        return key;
       } else {
-        // Single namespace
+        // 단일 네임스페이스
         const nsSource = translationSource[namespace as keyof typeof translationSource] as any;
-        
         if (nsSource) {
-          // Navigate through nested translation object for single namespace
           const keys = key.split('.');
           let value: any = nsSource;
           
@@ -61,14 +60,14 @@ export const useTranslation = (namespace?: string | string[]) => {
             value = value?.[k];
           }
           
-          if (value) {
-            return value;
+          if (value && typeof value === 'string') {
+            return params ? replaceParams(value, params) : value;
           }
         }
       }
     }
     
-    // If no namespace or no translation found in namespace, try root level
+    // 루트 레벨에서 찾기
     const keys = key.split('.');
     let value: any = translationSource;
     
@@ -76,8 +75,20 @@ export const useTranslation = (namespace?: string | string[]) => {
       value = value?.[k];
     }
     
-    return value || key;
+    if (value && typeof value === 'string') {
+      return params ? replaceParams(value, params) : value;
+    }
+    
+    // 번역을 찾을 수 없는 경우 키 반환
+    return key;
   }, [language, namespace]);
+
+  // 매개변수 치환 함수
+  const replaceParams = (text: string, params: Record<string, any>): string => {
+    return text.replace(/\{(\w+)\}/g, (match, key) => {
+      return params[key] !== undefined ? String(params[key]) : match;
+    });
+  };
 
   return { 
     t,
