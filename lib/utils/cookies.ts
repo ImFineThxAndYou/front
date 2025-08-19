@@ -43,13 +43,18 @@ export function getAllCookies(): Record<string, string> {
 /**
  * 쿠키를 설정하는 함수
  */
-export function setCookie(name: string, value: string, days: number = 7): void {
+export function setCookie(name: string, value: string, days: number = 7, secure: boolean = false): void {
   if (typeof document === 'undefined') return;
   
   try {
     const expires = new Date();
     expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
-    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+    
+    // SameSite 설정
+    const sameSite = secure ? 'SameSite=None' : 'SameSite=Lax';
+    const secureFlag = secure ? ';secure' : '';
+    
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;${sameSite}${secureFlag}`;
   } catch (error) {
     console.error('쿠키 설정 오류:', error);
   }
@@ -62,7 +67,8 @@ export function deleteCookie(name: string): void {
   if (typeof document === 'undefined') return;
   
   try {
-    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+    // SameSite 설정 포함하여 삭제
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`;
   } catch (error) {
     console.error('쿠키 삭제 오류:', error);
   }
