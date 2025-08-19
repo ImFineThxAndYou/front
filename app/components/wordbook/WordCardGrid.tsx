@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Word } from '../../../lib/stores/wordbook';
 import WordDetailCard from './WordDetailCard';
+import { useTranslation } from 'react-i18next';
 
 interface WordCardGridProps {
   words: Word[];
@@ -20,6 +21,7 @@ export default function WordCardGrid({
   searchQuery
 }: WordCardGridProps) {
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const getCategoryInfo = () => {
     const categoryMap: Record<string, { title: string; emoji: string; description: string }> = {
@@ -40,37 +42,32 @@ export default function WordCardGrid({
 
   const categoryInfo = getCategoryInfo();
 
-  const getDifficultyConfig = (difficulty: number) => {
-    if (difficulty <= 2) return { 
-      color: '#10b981', 
-      bg: 'rgba(16, 185, 129, 0.1)',
-      label: '쉬움',
-      emoji: '🟢'
-    };
-    if (difficulty <= 3) return { 
-      color: '#f59e0b', 
-      bg: 'rgba(245, 158, 11, 0.1)',
-      label: '보통',
-      emoji: '🟡'
-    };
-    return { 
-      color: '#ef4444', 
-      bg: 'rgba(239, 68, 68, 0.1)',
-      label: '어려움',
-      emoji: '🔴'
-    };
+  const getDifficultyConfig = (level: string) => {
+    switch (level) {
+      case 'a1':
+      case 'a2':
+        return { color: 'var(--success)', label: t('common.easyLevel') };
+      case 'b1':
+      case 'b2':
+        return { color: 'var(--warning)', label: t('common.mediumLevel') };
+      case 'c1':
+      case 'c2':
+        return { color: 'var(--error)', label: t('common.hardLevel') };
+      default:
+        return { color: 'var(--text-tertiary)', label: level };
+    }
   };
 
-  const getPartOfSpeechConfig = (pos: string) => {
+  const getPosConfig = (pos: string) => {
     const posMap: Record<string, { color: string; emoji: string; label: string }> = {
-      'noun': { color: '#8b5cf6', emoji: '📖', label: '명사' },
-      'verb': { color: '#06b6d4', emoji: '🏃', label: '동사' },
-      'adjective': { color: '#f97316', emoji: '⭐', label: '형용사' },
-      'adverb': { color: '#ec4899', emoji: '⚡', label: '부사' },
-      'preposition': { color: '#64748b', emoji: '🔗', label: '전치사' },
-      'conjunction': { color: '#94a3b8', emoji: '🔀', label: '접속사' }
+      'noun': { color: 'var(--accent-primary)', emoji: '📖', label: t('common.noun') },
+      'verb': { color: 'var(--info)', emoji: '🏃', label: t('common.verb') },
+      'adjective': { color: 'var(--accent-orange)', emoji: '⭐', label: t('common.adjective') },
+      'adverb': { color: 'var(--accent-secondary)', emoji: '⚡', label: t('common.adverb') },
+      'preposition': { color: 'var(--text-tertiary)', emoji: '🔗', label: '전치사' },
+      'conjunction': { color: 'var(--text-quaternary)', emoji: '🔀', label: '접속사' }
     };
-    return posMap[pos] || { color: '#64748b', emoji: '📝', label: pos };
+    return posMap[pos] || { color: 'var(--text-tertiary)', emoji: '📝', label: pos };
   };
 
   const formatDate = (dateString: string) => {
@@ -177,7 +174,7 @@ export default function WordCardGrid({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {words.map((word) => {
                 const difficultyConfig = getDifficultyConfig(word.difficulty);
-                const posConfig = getPartOfSpeechConfig(word.partOfSpeech);
+                const posConfig = getPosConfig(word.partOfSpeech);
                 const isHovered = hoveredWord === word.id;
                 const isSelected = selectedWord?.id === word.id;
 
@@ -214,7 +211,7 @@ export default function WordCardGrid({
                           style={{
                             backgroundColor: isSelected 
                               ? 'rgba(255, 255, 255, 0.2)' 
-                              : difficultyConfig.bg,
+                              : difficultyConfig.color + '10',
                             color: isSelected ? 'white' : difficultyConfig.color
                           }}
                         >

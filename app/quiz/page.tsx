@@ -48,6 +48,8 @@ export default function QuizPage() {
           color: 'var(--text-primary)'
         }}
       >
+
+
         {/* Header */}
         <div className="flex-shrink-0 p-6">
           <div 
@@ -84,20 +86,7 @@ export default function QuizPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => router.push('/quiz/history')}
-                  className="flex items-center px-3 py-2 rounded-lg hover:shadow-lg transition-all cursor-pointer font-medium text-sm"
-                  style={{
-                    backgroundColor: 'var(--surface-secondary)',
-                    color: 'var(--text-primary)',
-                    border: '1px solid var(--border-secondary)'
-                  }}
-                >
-                  <i className="ri-history-line w-4 h-4 mr-1"></i>
-                  퀴즈 기록
-                </button>
-              </div>
+
             </div>
 
             {/* Level Selection */}
@@ -199,7 +188,7 @@ export default function QuizPage() {
         {/* Info Section */}
         <div className="flex-shrink-0 p-6 pt-0">
           <div 
-            className="rounded-xl p-6 border-l-4"
+            className="rounded-xl p-4 border-l-4"
             style={{
               backgroundColor: 'var(--surface-secondary)',
               borderColor: 'var(--info)',
@@ -207,14 +196,13 @@ export default function QuizPage() {
             }}
           >
             <div className="flex items-start gap-3">
-              <i className="ri-lightbulb-line text-2xl" style={{ color: 'var(--info)' }}></i>
+              <i className="ri-lightbulb-line text-xl" style={{ color: 'var(--info)' }}></i>
               <div>
-                <h3 className="font-bold mb-2">퀴즈 안내</h3>
-                <ul className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
+                <h3 className="font-bold mb-2 text-sm">💡 퀴즈 안내</h3>
+                <ul className="text-xs space-y-1" style={{ color: 'var(--text-secondary)' }}>
                   <li>• 각 퀴즈는 5-30문항으로 자동 생성됩니다</li>
                   <li>• 중간에 나가더라도 나중에 이어서 풀 수 있습니다</li>
-                  <li>• 완료한 퀴즈는 언제든 재시험 볼 수 있습니다</li>
-                  <li>• 퀴즈 기록에서 상세한 오답 분석을 확인하세요</li>
+                  <li>• 퀴즈 기록과 통계는 워드북에서 확인하세요</li>
                 </ul>
               </div>
             </div>

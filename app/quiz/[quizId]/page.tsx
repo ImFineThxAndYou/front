@@ -6,6 +6,8 @@ import { quizService, QuizQuestion, QuizResult } from '../../../lib/services/qui
 import MainLayout from '../../components/layout/MainLayout';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
 
+
+
 export default function QuizExecutePage() {
   const router = useRouter();
   const params = useParams();
@@ -19,7 +21,7 @@ export default function QuizExecutePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const { t } = useTranslation(['wordbook', 'common']);
+  const { t } = useTranslation(['quiz', 'common']);
 
   useEffect(() => {
     loadQuiz();
@@ -60,7 +62,7 @@ export default function QuizExecutePage() {
 
     } catch (error) {
       console.error('퀴즈 로드 실패:', error);
-      alert('퀴즈를 불러올 수 없습니다.');
+      alert(t('quiz.errors.loadFailed'));
       router.push('/quiz');
     } finally {
       setIsLoading(false);
@@ -69,6 +71,11 @@ export default function QuizExecutePage() {
 
   const handleAnswerSelect = (answerIndex: number) => {
     setSelectedAnswer(answerIndex);
+    
+    // 답 선택 시 즉시 응답 기록
+    const newAnswers = [...userAnswers];
+    newAnswers[currentQuestionIndex] = answerIndex;
+    setUserAnswers(newAnswers);
   };
 
   const handleNextQuestion = () => {
@@ -106,7 +113,7 @@ export default function QuizExecutePage() {
       router.push(`/quiz/result/${quizId}`);
     } catch (error) {
       console.error('퀴즈 제출 실패:', error);
-      alert('퀴즈 제출에 실패했습니다. 다시 시도해주세요.');
+      alert(t('quiz.errors.submitFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -132,7 +139,7 @@ export default function QuizExecutePage() {
               className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin mb-4 mx-auto"
               style={{ borderColor: 'var(--primary)' }}
             />
-            <p style={{ color: 'var(--text-secondary)' }}>퀴즈를 불러오는 중...</p>
+            <p style={{ color: 'var(--text-secondary)' }}>{t('quiz.loading')}</p>
           </div>
         </div>
       </MainLayout>
@@ -157,15 +164,13 @@ export default function QuizExecutePage() {
               className="text-xl font-semibold mb-3"
               style={{ color: 'var(--text-primary)' }}
             >
-              퀴즈를 찾을 수 없습니다
+              {t('quiz.errors.notFound')}
             </h3>
             <p 
               className="text-sm mb-6"
               style={{ color: 'var(--text-secondary)' }}
             >
-              요청하신 퀴즈가 존재하지 않거나
-              <br />
-              접근 권한이 없습니다
+              {t('quiz.errors.notFoundDesc')}
             </p>
             <button
               onClick={() => router.push('/wordbook')}
@@ -174,7 +179,7 @@ export default function QuizExecutePage() {
                 background: 'linear-gradient(135deg, var(--primary), var(--secondary))'
               }}
             >
-              단어장으로 돌아가기
+              {t('quiz.actions.backToWordbook')}
             </button>
           </div>
         </div>
@@ -188,56 +193,56 @@ export default function QuizExecutePage() {
   return (
     <MainLayout>
       <div 
-        className="h-full overflow-hidden theme-transition"
+        className="h-full flex flex-col overflow-hidden theme-transition"
         style={{
           backgroundColor: 'var(--bg-primary)',
           color: 'var(--text-primary)'
         }}
       >
-        {/* Header */}
-        <div className="flex-shrink-0 p-6">
+        {/* Compact Header */}
+        <div className="flex-shrink-0 p-4">
           <div 
-            className="backdrop-blur-xl rounded-3xl border shadow-2xl p-6 theme-transition"
+            className="backdrop-blur-xl rounded-2xl border shadow-lg p-4 theme-transition"
             style={{
               backgroundColor: 'var(--surface-primary)',
               borderColor: 'var(--border-primary)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
             }}
           >
-            {/* Top Bar */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
+            {/* Top Bar - Compact */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
                 <button
                   onClick={() => router.push('/wordbook')}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium hover:shadow-md transition-all"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium hover:shadow-md transition-all"
                   style={{
                     backgroundColor: 'var(--surface-secondary)',
                     color: 'var(--text-secondary)'
                   }}
                 >
                   <i className="ri-arrow-left-line"></i>
-                  단어장
+                  {t('wordbook.title')}
                 </button>
                 
                 <div>
                   <h1 
-                    className="text-xl font-bold"
+                    className="text-lg font-bold"
                     style={{ color: 'var(--text-primary)' }}
                   >
-                    {quiz.quizType === 'DAILY' ? '📅 날짜별 퀴즈' : '🎲 랜덤 퀴즈'}
+                    {quiz.quizType === 'DAILY' ? t('quiz.types.daily') : t('quiz.types.random')}
                   </h1>
                   <p 
-                    className="text-sm"
+                    className="text-xs"
                     style={{ color: 'var(--text-secondary)' }}
                   >
-                    문제 {currentQuestionIndex + 1} / {questions.length}
+                    {t('quiz.questionNumber', { current: currentQuestionIndex + 1, total: questions.length })}
                   </p>
                 </div>
               </div>
 
               <div className="text-right">
                 <div 
-                  className="text-2xl font-bold"
+                  className="text-xl font-bold"
                   style={{ color: 'var(--success)' }}
                 >
                   {Math.round(getProgress())}%
@@ -246,15 +251,15 @@ export default function QuizExecutePage() {
                   className="text-xs"
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  진행률
+                  {t('quiz.progress')}
                 </div>
               </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="mb-4">
+            {/* Progress Bar - Compact */}
+            <div className="mb-3">
               <div 
-                className="w-full h-3 rounded-full overflow-hidden"
+                className="w-full h-2 rounded-full overflow-hidden"
                 style={{ backgroundColor: 'var(--surface-secondary)' }}
               >
                 <div
@@ -267,8 +272,8 @@ export default function QuizExecutePage() {
               </div>
             </div>
 
-            {/* Question Navigation */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+            {/* Question Navigation - Compact */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1">
               {questions.map((_, index) => {
                 const status = getQuestionStatus(index);
                 return (
@@ -283,8 +288,8 @@ export default function QuizExecutePage() {
                       setCurrentQuestionIndex(index);
                       setSelectedAnswer(userAnswers[index] ?? null);
                     }}
-                    className={`w-10 h-10 rounded-xl text-sm font-bold transition-all duration-200 flex-shrink-0 ${
-                      status === 'current' ? 'shadow-lg scale-110' : 'hover:scale-105'
+                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 flex-shrink-0 ${
+                      status === 'current' ? 'shadow-md scale-105' : 'hover:scale-105'
                     }`}
                     style={{
                       backgroundColor: 
@@ -303,20 +308,20 @@ export default function QuizExecutePage() {
           </div>
         </div>
 
-        {/* Question Content */}
-        <div className="flex-1 p-6 pt-0 overflow-y-auto">
+        {/* Question Content - Compact */}
+        <div className="flex-1 p-4 pt-0 min-h-0 overflow-y-auto">
           <div 
-            className="backdrop-blur-xl rounded-3xl border shadow-2xl p-8 theme-transition"
+            className="backdrop-blur-xl rounded-2xl border shadow-lg p-6 theme-transition min-h-full"
             style={{
               backgroundColor: 'var(--surface-primary)',
               borderColor: 'var(--border-primary)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
             }}
           >
-            {/* Question */}
-            <div className="text-center mb-8">
+            {/* Question - Compact */}
+            <div className="text-center mb-6">
               <div 
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-4"
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-3"
                 style={{
                   backgroundColor: 'var(--info)',
                   color: 'white'
@@ -327,27 +332,27 @@ export default function QuizExecutePage() {
               </div>
               
               <h2 
-                className="text-4xl font-bold mb-6"
+                className="text-3xl font-bold mb-4"
                 style={{ color: 'var(--text-primary)' }}
               >
                 {currentQuestion.question}
               </h2>
               
               <p 
-                className="text-lg"
+                className="text-base"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {t('quiz.chooseCorrectMeaning')}
               </p>
             </div>
 
-            {/* Choices */}
-            <div className="space-y-4 mb-8">
+            {/* Choices - Compact */}
+            <div className="space-y-3 mb-6">
               {currentQuestion.choices.map((choice, index) => (
                 <button
                   key={index}
                   onClick={() => handleAnswerSelect(index)}
-                  className={`w-full p-6 rounded-2xl border-2 text-left transition-all duration-300 hover:shadow-lg ${
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-300 hover:shadow-lg ${
                     selectedAnswer === index 
                       ? 'shadow-xl scale-105 border-opacity-100' 
                       : 'border-opacity-20 hover:border-opacity-40'
@@ -361,9 +366,9 @@ export default function QuizExecutePage() {
                       : 'var(--border-secondary)'
                   }}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <div 
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-base ${
                         selectedAnswer === index ? 'text-white' : ''
                       }`}
                       style={{
@@ -379,7 +384,7 @@ export default function QuizExecutePage() {
                     </div>
                     
                     <div 
-                      className="text-lg font-medium"
+                      className="text-base font-medium"
                       style={{ color: 'var(--text-primary)' }}
                     >
                       {choice}
@@ -389,12 +394,12 @@ export default function QuizExecutePage() {
               ))}
             </div>
 
-            {/* Navigation */}
+            {/* Navigation - Compact */}
             <div className="flex justify-between items-center">
               <button
                 onClick={handlePreviousQuestion}
                 disabled={currentQuestionIndex === 0}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl font-medium border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: 'var(--surface-secondary)',
                   borderColor: 'var(--border-secondary)',
@@ -402,31 +407,31 @@ export default function QuizExecutePage() {
                 }}
               >
                 <i className="ri-arrow-left-line"></i>
-                이전 문제
+                {t('quiz.actions.previous')}
               </button>
 
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 {!isLastQuestion ? (
                   <button
                     onClick={handleNextQuestion}
-                    className="flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                     style={{
                       background: 'linear-gradient(135deg, var(--primary), var(--secondary))'
                     }}
                   >
-                    다음 문제
+                    {t('quiz.actions.next')}
                     <i className="ri-arrow-right-line"></i>
                   </button>
                 ) : (
                   <button
                     onClick={() => setShowConfirmModal(true)}
-                    className="flex items-center gap-2 px-8 py-3 rounded-2xl font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                     style={{
                       background: 'linear-gradient(135deg, var(--success), var(--info))'
                     }}
                   >
                     <i className="ri-check-line"></i>
-                    퀴즈 완료
+                    {t('quiz.actions.submit')}
                   </button>
                 )}
               </div>
@@ -461,16 +466,16 @@ export default function QuizExecutePage() {
                   className="text-xl font-bold mb-2"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  퀴즈를 제출하시겠습니까?
+                  {t('quiz.confirm.title')}
                 </h3>
                 
                 <p 
                   className="text-sm mb-6"
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  제출 후에는 답안을 수정할 수 없습니다.
+                  {t('quiz.confirm.description')}
                   <br />
-                  미응답 문제: {userAnswers.filter(a => a === -1).length}개
+                  {t('quiz.confirm.unanswered', { count: userAnswers.filter(a => a === -1).length })}
                 </p>
                 
                 <div className="flex gap-3">
@@ -483,7 +488,7 @@ export default function QuizExecutePage() {
                       color: 'var(--text-primary)'
                     }}
                   >
-                    취소
+                    {t('common.cancel')}
                   </button>
                   
                   <button
@@ -497,7 +502,7 @@ export default function QuizExecutePage() {
                       background: 'linear-gradient(135deg, var(--success), var(--info))'
                     }}
                   >
-                    {isSubmitting ? '제출 중...' : '제출하기'}
+                    {isSubmitting ? t('quiz.submitting') : t('quiz.confirm.submit')}
                   </button>
                 </div>
               </div>

@@ -5,11 +5,13 @@ import { useWordbookStore } from '../../lib/stores/wordbook';
 import { useAuthStore } from '../../lib/stores/auth';
 import { useTranslation } from '../../lib/hooks/useTranslation';
 import { vocabookService } from '../../lib/services/vocabookService';
+import { quizService } from '../../lib/services/quizService';
 import MainLayout from '../components/layout/MainLayout';
 import WordbookSidebar from '../components/wordbook/WordbookSidebar';
 import WordCardGrid from '../components/wordbook/WordCardGrid';
 import QuizHistoryGrid from '../components/wordbook/QuizHistoryGrid';
 import QuizModal from '../components/wordbook/QuizModal';
+
 import { Word } from '../../lib/stores/wordbook';
 
 export default function WordbookPage() {
@@ -34,9 +36,29 @@ export default function WordbookPage() {
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [searchQuery, setLocalSearchQuery] = useState('');
   const [activeView, setActiveView] = useState<'words' | 'quiz-history'>('words');
+  const [selectedQuizStatus, setSelectedQuizStatus] = useState<'ALL' | 'PENDING' | 'SUBMIT'>('ALL');
+  const [quizStats, setQuizStats] = useState<{
+    total: number;
+    pending: number;
+    completed: number;
+  } | null>(null);
 
   const filteredWords = getFilteredWords();
   const todayWords = getTodayWords();
+
+  // 퀴즈 통계 로드
+  const loadQuizStats = async () => {
+    try {
+      const response = await quizService.getMyQuizzes(0, 1000); // 충분히 큰 수로 전체 로드
+      const total = response.totalElements;
+      const pending = response.content.filter(q => q.status === 'PENDING').length;
+      const completed = response.content.filter(q => q.status === 'SUBMIT').length;
+      
+      setQuizStats({ total, pending, completed });
+    } catch (error) {
+      console.error('퀴즈 통계 로드 실패:', error);
+    }
+  };
 
   // 단어장 API 직접 테스트
   const testVocabookAPI = async () => {
@@ -72,6 +94,7 @@ export default function WordbookPage() {
       console.log('✅ [WordbookPage] 사용자 정보 확인됨, 2초 후 API 테스트');
       setTimeout(() => {
         testVocabookAPI();
+        loadQuizStats(); // 퀴즈 통계도 함께 로드
       }, 2000);
     } else {
       console.log('⏳ [WordbookPage] 사용자 정보 대기 중...');
@@ -150,6 +173,11 @@ export default function WordbookPage() {
     setSelectedWord(null); // 카테고리 변경 시 선택된 단어 초기화
   };
 
+  const handleQuizStatusChange = (status: 'ALL' | 'PENDING' | 'SUBMIT') => {
+    setSelectedQuizStatus(status);
+    setActiveView('quiz-history'); // 퀴즈 상태 변경 시 자동으로 퀴즈 히스토리 뷰로 전환
+  };
+
   return (
     <MainLayout>
       <div 
@@ -181,29 +209,42 @@ export default function WordbookPage() {
             onSearchChange={setLocalSearchQuery}
             activeView={activeView}
             onViewChange={setActiveView}
+            quizStats={quizStats}
+            selectedQuizStatus={selectedQuizStatus}
+            onQuizStatusChange={handleQuizStatusChange}
           />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col h-full min-w-0 relative">
-          {/* API 테스트 버튼 (디버깅용) */}
-          <div className="p-4 bg-yellow-100 border-b border-yellow-300">
-            <div className="flex gap-2">
+          {/* API 테스트 및 상태 표시 (디버깅용) */}
+          <div className="p-4 bg-blue-50 border-b border-blue-200">
+            <div className="flex flex-wrap gap-2 items-center">
               <button 
                 onClick={testVocabookAPI}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                disabled={isLoading}
               >
-                🧪 {t('common.loading')}
+                🧪 API 테스트
               </button>
               <button 
-                onClick={() => loadWords(user?.membername || 'test')}
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                onClick={() => loadWords(user?.membername || 'user1')}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                disabled={isLoading}
               >
-                🔄 {t('common.loading')} ({user?.membername || 'test'})
+                🔄 단어장 새로고침 ({user?.membername || 'user1'})
               </button>
-              <span className="px-4 py-2 bg-gray-200 rounded">
-                {t('common.words')}: {words.length}
-              </span>
+              <div className="flex gap-2 text-sm">
+                <span className="px-3 py-1 bg-white rounded border">
+                  📊 총 단어: {words.length}개
+                </span>
+                <span className="px-3 py-1 bg-white rounded border">
+                  👤 사용자: {user?.membername || 'user1'}
+                </span>
+                <span className={`px-3 py-1 rounded border ${isLoading ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                  {isLoading ? '⏳ 로딩 중...' : '✅ 준비'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -225,6 +266,7 @@ export default function WordbookPage() {
           ) : (
             <QuizHistoryGrid 
               onQuizStart={() => setShowQuizModal(true)}
+              selectedStatus={selectedQuizStatus}
             />
           )}
         </div>

@@ -1,4 +1,6 @@
 
+'use client';
+
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
@@ -12,6 +14,7 @@ const resources = {
     chat: translations.ko.chat,
     explore: translations.ko.explore,
     wordbook: translations.ko.wordbook,
+    quiz: translations.ko.quiz,
     me: translations.ko.me,
     notifications: {
       title: "알림",
@@ -32,6 +35,7 @@ const resources = {
     chat: translations.en.chat,
     explore: translations.en.explore,
     wordbook: translations.en.wordbook,
+    quiz: translations.en.quiz,
     me: translations.en.me,
     notifications: {
       title: "Notifications",
@@ -47,24 +51,27 @@ const resources = {
   }
 };
 
-i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    resources,
-    fallbackLng: 'ko',
-    lng: 'ko', // 기본 언어를 명시적으로 설정
-    defaultNS: 'common',
-    ns: ['common', 'nav', 'home', 'chat', 'explore', 'wordbook', 'me'],
-    debug: true, // 디버그 활성화하여 문제 확인
-    interpolation: {
-      escapeValue: false
-    },
-    detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
-      lookupLocalStorage: 'i18nextLng',
-      caches: ['localStorage']
-    }
-  });
+// 브라우저 환경에서만 초기화
+if (typeof window !== 'undefined') {
+  i18n
+    .use(LanguageDetector)
+    .use(initReactI18next)
+    .init({
+      resources,
+      fallbackLng: 'ko',
+      lng: 'ko', // 기본 언어를 명시적으로 설정
+      defaultNS: 'common',
+      ns: ['common', 'nav', 'home', 'chat', 'explore', 'wordbook', 'quiz', 'me'],
+      debug: false, // 디버그 비활성화
+      interpolation: {
+        escapeValue: false
+      },
+      detection: {
+        order: ['localStorage', 'navigator', 'htmlTag'],
+        lookupLocalStorage: 'i18nextLng',
+        caches: ['localStorage']
+      }
+    });
+}
 
 export default i18n;

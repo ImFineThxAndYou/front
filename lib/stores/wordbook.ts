@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { vocabookService, type MemberWordEntry, type MemberVocabulary } from '../services/vocabookService';
+import { vocabookService, type MemberWordEntry, type MemberVocabulary, type VocabularyWordEntry, type VocabularyApiResponse } from '../services/vocabookService';
 
 export interface Word {
   id: string;
@@ -66,18 +66,43 @@ interface WordbookState {
   getWordsByDifficulty: (difficulty: number) => Word[];
 }
 
-// API 응답 데이터를 Store 형식으로 변환하는 헬퍼 함수
-const convertMemberWordToWord = (memberWord: MemberWordEntry, index: number): Word => {
-  // level을 difficulty로 변환 (EASY=1, MEDIUM=2, HARD=3)
-  const levelToDifficulty = (level: string): number => {
-    switch (level.toUpperCase()) {
-      case 'EASY': return 1;
-      case 'MEDIUM': return 2;
-      case 'HARD': return 3;
-      default: return 1;
-    }
-  };
+// level을 difficulty로 변환하는 공통 함수
+const levelToDifficulty = (level: string): number => {
+  switch (level.toLowerCase()) {
+    case 'a1': return 1;
+    case 'a2': return 2;
+    case 'b1': return 3;
+    case 'b2': return 4;
+    case 'c1': return 5;
+    case 'c2': return 6;
+    case 'easy': return 1;
+    case 'medium': return 3;
+    case 'hard': return 5;
+    default: return 1;
+  }
+};
 
+// 새로운 API 응답을 위한 변환 함수
+const convertVocabularyWordToWord = (vocabWord: VocabularyWordEntry, index: number): Word => {
+  console.log('🔄 [Store] 단어 변환 (새 API):', vocabWord.word);
+  
+  return {
+    id: `${vocabWord.word}-${vocabWord.chatRoomUuid}-${index}-${Date.now()}`,
+    word: vocabWord.word,
+    meanings: [vocabWord.meaning],
+    partOfSpeech: vocabWord.pos || 'noun',
+    difficulty: levelToDifficulty(vocabWord.level),
+    examples: vocabWord.example || [],
+    tags: [vocabWord.lang, vocabWord.level].filter(Boolean),
+    createdAt: vocabWord.analyzedAt,
+    sourceChatId: vocabWord.chatRoomUuid
+  };
+};
+
+// 기존 API 응답을 위한 변환 함수 (호환성 유지)
+const convertMemberWordToWord = (memberWord: MemberWordEntry, index: number): Word => {
+  console.log('🔄 [Store] 단어 변환 (기존 API):', memberWord.word);
+  
   return {
     id: `${memberWord.word}-${memberWord.chatRoomUuid}-${index}`,
     word: memberWord.word,
@@ -110,48 +135,31 @@ export const useWordbookStore = create<WordbookState>()(
       },
       isLoading: false,
 
-      // API data loading
+      // API data loading (새로운 API 응답 구조용)
       loadWords: async (membername: string) => {
         console.log('🔄 [Store] 단어장 데이터 로딩 시작:', membername);
         set({ isLoading: true });
         try {
-          const memberVocabularies = await vocabookService.getVocabulariesByMember(membername);
-          console.log('📦 [Store] 받은 단어장 목록:', memberVocabularies);
-          console.log('🔍 [Store] memberVocabularies 타입:', typeof memberVocabularies);
-          console.log('🔍 [Store] memberVocabularies.length:', memberVocabularies?.length);
-          console.log('🔍 [Store] Array.isArray(memberVocabularies):', Array.isArray(memberVocabularies));
+          const apiResponse = await vocabookService.getVocabulariesByMember(membername);
+          console.log('📦 [Store] 받은 API 응답:', {
+            totalElements: apiResponse.totalElements,
+            contentLength: apiResponse.content?.length,
+            pageable: apiResponse.pageable
+          });
           
-          // 데이터 구조 확인 및 처리
-          let vocabulariesToProcess = [];
-          if (Array.isArray(memberVocabularies)) {
-            vocabulariesToProcess = memberVocabularies;
-          } else if (memberVocabularies && typeof memberVocabularies === 'object') {
-            // 단일 객체인 경우 배열로 감쌈
-            vocabulariesToProcess = [memberVocabularies];
-          } else {
-            console.warn('⚠️ [Store] 예상하지 못한 데이터 구조:', memberVocabularies);
-            vocabulariesToProcess = [];
-          }
+          // 새로운 API 응답 구조 처리
+          const vocabularyWords = apiResponse.content || [];
+          console.log('📚 [Store] 처리할 단어 개수:', vocabularyWords.length);
           
-          console.log('📚 [Store] 처리할 단어장 개수:', vocabulariesToProcess.length);
-          
-          // 모든 단어들을 하나의 배열로 합치기
-          const allWords: Word[] = [];
-          vocabulariesToProcess.forEach((vocabulary, vocabIndex) => {
-            console.log(`📚 [Store] 단어장 ${vocabIndex + 1} 처리:`, vocabulary.id, '단어 개수:', vocabulary.words?.length);
-            
-            if (vocabulary.words && Array.isArray(vocabulary.words)) {
-              vocabulary.words.forEach((memberWord, wordIndex) => {
-                const word = convertMemberWordToWord(memberWord, vocabIndex * 1000 + wordIndex);
-                allWords.push(word);
-              });
-            } else {
-              console.warn('⚠️ [Store] 단어장에 words 배열이 없습니다:', vocabulary);
-            }
+          // 모든 단어들을 Word 인터페이스로 변환
+          const allWords: Word[] = vocabularyWords.map((vocabWord, index) => {
+            return convertVocabularyWordToWord(vocabWord, index);
           });
 
           console.log('✅ [Store] 단어장 데이터 로딩 완료:', allWords.length, '개 단어');
           console.log('🔍 [Store] 변환된 첫 번째 단어 샘플:', allWords[0]);
+          console.log('🔍 [Store] 변환된 마지막 단어 샘플:', allWords[allWords.length - 1]);
+          
           set({ words: allWords, isLoading: false });
         } catch (error) {
           console.error('❌ [Store] 단어장 데이터 로딩 실패:', error);

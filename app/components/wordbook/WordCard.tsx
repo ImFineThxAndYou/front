@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Word } from '../../../lib/stores/wordbook';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
 
 interface WordCardProps {
   word: Word;
@@ -9,25 +10,26 @@ interface WordCardProps {
 }
 
 export default function WordCard({ word, viewMode }: WordCardProps) {
+  const { t } = useTranslation(['common']);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getDifficultyConfig = (difficulty: number) => {
     if (difficulty <= 2) return { 
       color: 'var(--success)', 
-      label: '쉬움', 
+      label: t('common.easyLevel'), 
       icon: 'ri-check-circle-line',
       bg: 'rgba(34, 197, 94, 0.1)'
     };
     if (difficulty <= 3) return { 
       color: 'var(--warning)', 
-      label: '보통', 
+      label: t('common.mediumLevel'), 
       icon: 'ri-time-line',
       bg: 'rgba(245, 158, 11, 0.1)'
     };
     return { 
       color: 'var(--danger)', 
-      label: '어려움', 
+      label: t('common.hardLevel'), 
       icon: 'ri-alert-circle-line',
       bg: 'rgba(239, 68, 68, 0.1)'
     };
@@ -41,9 +43,9 @@ export default function WordCard({ word, viewMode }: WordCardProps) {
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 1) return '오늘';
-    if (diffDays === 2) return '어제';
-    if (diffDays <= 7) return `${diffDays - 1}일 전`;
+    if (diffDays === 1) return t('common.today');
+    if (diffDays === 2) return t('common.yesterday');
+    if (diffDays <= 7) return t('common.daysAgo', { days: diffDays - 1 });
     return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
   };
 
@@ -82,7 +84,7 @@ export default function WordCard({ word, viewMode }: WordCardProps) {
             <span>{formatDate(word.createdAt)}</span>
             <div className="flex items-center gap-1">
               <i className="ri-bookmark-line"></i>
-              <span>{word.meanings.length}개 의미</span>
+              <span>{word.meanings.length} {t('common.meanings')}</span>
             </div>
           </div>
         </div>

@@ -20,6 +20,10 @@ interface ChatState {
   // 메시지 상태
   unreadCounts: Map<string, number>;
   
+  // 번역 상태
+  translations: Record<string, Record<string, string>>; // messageId -> { targetLang -> translatedText }
+  translatingMessages: Set<string>; // 번역 중인 메시지 ID들
+  
   // 액션
   connectWebSocket: () => Promise<void>;
   disconnectWebSocket: () => void;
@@ -34,6 +38,12 @@ interface ChatState {
   setUnreadCount: (chatRoomId: string, count: number) => void;
   clearConnectionError: () => void;
   loadChatRooms: () => Promise<void>;
+
+  // 번역 액션
+  setTranslation: (messageId: string, targetLang: string, translatedText: string) => void;
+  setTranslating: (messageId: string, isTranslating: boolean) => void;
+  getTranslation: (messageId: string, targetLang: string) => string | null;
+  isTranslating: (messageId: string) => boolean;
 }
 
 export const useChatStore = create<ChatState>((set, get) => {
@@ -56,6 +66,8 @@ export const useChatStore = create<ChatState>((set, get) => {
     chatRooms: [],
     chatMessages: new Map(),
     unreadCounts: new Map(),
+    translations: {},
+    translatingMessages: new Set(),
 
   // WebSocket 연결
   connectWebSocket: async () => {
@@ -255,8 +267,10 @@ export const useChatStore = create<ChatState>((set, get) => {
       websocketManager.sendMessage(chatRoomId, content);
       
       // 낙관적 업데이트 (즉시 UI에 반영)
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
       const optimisticMessage: ChatMessage = {
-        id: `temp-${Date.now()}-${Math.random()}`, // 더 고유한 임시 ID
+        id: `temp-${timestamp}-${randomId}-${currentUser?.id || 'unknown'}`, // 더욱 고유한 임시 ID
         chatRoomUuid: chatRoomId,
         sender: senderName,
         senderId: currentUser?.id?.toString() || '',
@@ -289,9 +303,21 @@ export const useChatStore = create<ChatState>((set, get) => {
     const currentMessages = state.chatMessages.get(chatRoomId) || [];
     console.log('🔍 현재 메시지 개수:', currentMessages.length);
     
-    // 중복 메시지 방지
-    if (currentMessages.some(m => m.id === message.id)) {
-      console.log('⚠️ 중복 메시지 감지 - 추가하지 않음:', message.id);
+    // 더 강화된 중복 메시지 방지 - ID와 내용+시간 조합으로 체크
+    const isDuplicate = currentMessages.some(m => 
+      m.id === message.id || 
+      (m.content === message.content && 
+       m.messageTime === message.messageTime && 
+       m.sender === message.sender)
+    );
+    
+    if (isDuplicate) {
+      console.log('⚠️ 중복 메시지 감지 - 추가하지 않음:', { 
+        id: message.id, 
+        content: message.content.substring(0, 20),
+        sender: message.sender,
+        time: message.messageTime
+      });
       return;
     }
     
@@ -336,17 +362,48 @@ export const useChatStore = create<ChatState>((set, get) => {
     
     const updatedChatMessages = new Map(state.chatMessages);
     
+    // 중복 제거: ID 기준으로 유니크한 메시지만 필터링
+    const uniqueMessages = messages.filter((message, index, array) => {
+      // ID가 유니크한지 확인
+      const firstIndex = array.findIndex(m => m.id === message.id);
+      if (firstIndex !== index) {
+        console.log('⚠️ loadMessages에서 중복 ID 감지:', { 
+          id: message.id, 
+          content: message.content.substring(0, 20) 
+        });
+        return false;
+      }
+      
+      // 내용+시간+발신자 조합으로도 중복 체크
+      const duplicateByContent = array.findIndex(m => 
+        m.content === message.content && 
+        m.messageTime === message.messageTime && 
+        m.sender === message.sender
+      );
+      
+      if (duplicateByContent !== index) {
+        console.log('⚠️ loadMessages에서 내용 기반 중복 감지:', { 
+          content: message.content.substring(0, 20),
+          sender: message.sender,
+          time: message.messageTime
+        });
+        return false;
+      }
+      
+      return true;
+    });
+    
     // 시간순으로 정렬 (오래된 순서대로)
-    const sortedMessages = messages.sort((a, b) => 
+    const sortedMessages = uniqueMessages.sort((a, b) => 
       new Date(a.messageTime).getTime() - new Date(b.messageTime).getTime()
     );
     
-    console.log('🔄 정렬된 메시지들:', sortedMessages.map(m => ({ id: m.id, content: m.content, time: m.messageTime })));
+    console.log('🔄 정렬된 유니크 메시지들:', sortedMessages.map(m => ({ id: m.id, content: m.content, time: m.messageTime })));
     
     updatedChatMessages.set(chatRoomId, sortedMessages);
     set({ chatMessages: updatedChatMessages });
     
-    console.log(`📝 ${chatRoomId}에 ${messages.length}개 메시지 로드됨`);
+    console.log(`📝 ${chatRoomId}에 ${uniqueMessages.length}개 유니크 메시지 로드됨 (원본: ${messages.length}개)`);
     console.log('🔍 스토어 업데이트 후:', { 
       newSize: updatedChatMessages.size,
       newRoomMessages: updatedChatMessages.get(chatRoomId)?.length || 0
@@ -390,6 +447,38 @@ export const useChatStore = create<ChatState>((set, get) => {
       console.error('❌ 채팅방 목록 로드 실패:', error);
       set({ chatRooms: [], isLoading: false });
     }
+  },
+
+  // 번역 액션
+  setTranslation: (messageId, targetLang, translatedText) => {
+    const { translations } = get();
+    const newTranslations = { ...translations };
+    if (!newTranslations[messageId]) {
+      newTranslations[messageId] = {};
+    }
+    newTranslations[messageId][targetLang] = translatedText;
+    set({ translations: newTranslations });
+  },
+
+  setTranslating: (messageId, isTranslating) => {
+    const { translatingMessages } = get();
+    const newTranslatingMessages = new Set(translatingMessages);
+    if (isTranslating) {
+      newTranslatingMessages.add(messageId);
+    } else {
+      newTranslatingMessages.delete(messageId);
+    }
+    set({ translatingMessages: newTranslatingMessages });
+  },
+
+  getTranslation: (messageId, targetLang) => {
+    const { translations } = get();
+    return translations[messageId]?.[targetLang] || null;
+  },
+
+  isTranslating: (messageId) => {
+    const { translatingMessages } = get();
+    return translatingMessages.has(messageId);
   }
   };
 });

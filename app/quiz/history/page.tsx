@@ -1,18 +1,30 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { quizService, QuizResult, QuizStatus } from '../../../lib/services/quizService';
-import MainLayout from '../../components/layout/MainLayout';
+import MainLayout from '../../../components/layout/MainLayout';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
+import QuizCard from '../../../components/quiz/QuizCard';
 
 export default function QuizHistoryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { t } = useTranslation(['quiz', 'common']);
   const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<QuizStatus | 'ALL'>('ALL');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+
+  useEffect(() => {
+    // URL 파라미터에서 상태 확인
+    const statusParam = searchParams.get('status');
+    if (statusParam && (statusParam === 'ALL' || statusParam === 'PENDING' || statusParam === 'SUBMIT')) {
+      setSelectedStatus(statusParam as QuizStatus | 'ALL');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     loadQuizHistory();
@@ -62,95 +74,22 @@ export default function QuizHistoryPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return '오늘';
-    if (diffDays === 2) return '어제';
-    if (diffDays <= 7) return `${diffDays - 1}일 전`;
-    
-    return date.toLocaleDateString('ko-KR', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
-  const getQuizTypeLabel = (quiz: QuizResult) => {
-    if (quiz.quizType === 'DAILY') {
-      return {
-        label: `날짜별 퀴즈`,
-        sublabel: quiz.dailyDate,
-        icon: 'ri-calendar-check-line',
-        color: 'var(--info)'
-      };
-    }
-    return {
-      label: '랜덤 퀴즈',
-      sublabel: '전체 단어',
-      icon: 'ri-shuffle-line',
-      color: 'var(--primary)'
-    };
-  };
 
-  const getStatusConfig = (status: QuizStatus) => {
-    if (status === 'PENDING') {
-      return {
-        label: '진행 중',
-        color: 'var(--warning)',
-        bg: 'rgba(245, 158, 11, 0.1)',
-        icon: 'ri-time-line'
-      };
-    }
-    return {
-      label: '완료',
-      color: 'var(--success)',
-      bg: 'rgba(34, 197, 94, 0.1)',
-      icon: 'ri-check-circle-line'
-    };
-  };
 
-  const getScoreConfig = (score: number) => {
-    if (score >= 90) return { 
-      color: 'var(--success)', 
-      grade: 'A', 
-      emoji: '🏆',
-      bg: 'rgba(34, 197, 94, 0.1)'
-    };
-    if (score >= 70) return { 
-      color: 'var(--info)', 
-      grade: 'B', 
-      emoji: '👍',
-      bg: 'rgba(59, 130, 246, 0.1)'
-    };
-    if (score >= 50) return { 
-      color: 'var(--warning)', 
-      grade: 'C', 
-      emoji: '📚',
-      bg: 'rgba(245, 158, 11, 0.1)'
-    };
-    return { 
-      color: 'var(--danger)', 
-      grade: 'D', 
-      emoji: '💪',
-      bg: 'rgba(239, 68, 68, 0.1)'
-    };
-  };
+
+
 
   const filterOptions = [
-    { value: 'ALL', label: '전체', icon: 'ri-list-unordered' },
-    { value: 'PENDING', label: '진행 중', icon: 'ri-time-line' },
-    { value: 'SUBMIT', label: '완료', icon: 'ri-check-circle-line' },
+    { value: 'ALL', label: t('quiz.status.all'), icon: 'ri-list-unordered' },
+    { value: 'PENDING', label: t('quiz.status.pending'), icon: 'ri-time-line' },
+    { value: 'SUBMIT', label: t('quiz.status.submit'), icon: 'ri-check-circle-line' },
   ];
 
   return (
     <MainLayout>
       <div 
-        className="h-full overflow-hidden theme-transition"
+        className="h-full overflow-y-auto theme-transition"
         style={{
           backgroundColor: 'var(--bg-primary)',
           color: 'var(--text-primary)'
@@ -171,7 +110,7 @@ export default function QuizHistoryPage() {
                 <div 
                   className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
                   style={{
-                    background: 'linear-gradient(135deg, var(--info), var(--success))'
+                    background: 'linear-gradient(135deg, #667eea, #764ba2)'
                   }}
                 >
                   <i className="ri-history-line text-2xl text-white"></i>
@@ -180,29 +119,40 @@ export default function QuizHistoryPage() {
                   <h1 
                     className="text-3xl font-bold bg-gradient-to-r bg-clip-text text-transparent"
                     style={{
-                      backgroundImage: 'linear-gradient(135deg, var(--info), var(--success))'
+                      backgroundImage: 'linear-gradient(135deg, #667eea, #764ba2)'
                     }}
                   >
-                    퀴즈 기록
+                    {t('quiz.history')}
                   </h1>
                   <p 
-                    className="text-sm opacity-75"
-                    style={{ color: 'var(--text-secondary)' }}
+                    className="text-sm font-medium"
+                    style={{ 
+                      color: 'var(--text-secondary)',
+                      filter: 'contrast(1.2)'
+                    }}
                   >
-                    총 {totalElements}개의 퀴즈 결과를 확인하세요
+                    {t('quiz.totalResults', { count: totalElements })}
                   </p>
                 </div>
               </div>
 
               <button
-                onClick={() => router.push('/wordbook')}
+                onClick={async () => {
+                  try {
+                    const newQuiz = await quizService.startRandomQuiz();
+                    router.push(`/quiz/${newQuiz.quizUUID}`);
+                  } catch (error) {
+                    console.error('새 퀴즈 시작 실패:', error);
+                    alert('새 퀴즈를 시작할 수 없습니다.');
+                  }
+                }}
                 className="flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
                 style={{
                   background: 'linear-gradient(135deg, var(--primary), var(--secondary))'
                 }}
               >
                 <i className="ri-add-line"></i>
-                새 퀴즈 시작
+                새 퀴즈
               </button>
             </div>
 
@@ -290,11 +240,8 @@ export default function QuizHistoryPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {quizzes.map((quiz) => {
-                const typeInfo = getQuizTypeLabel(quiz);
-                const statusConfig = getStatusConfig(quiz.status);
-                const scoreConfig = quiz.status === 'SUBMIT' ? getScoreConfig(quiz.score) : null;
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {quizzes.map((quiz) => (
 
                 return (
                   <div
@@ -479,16 +426,6 @@ export default function QuizHistoryPage() {
                             </>
                           )}
                           
-                          <i 
-                            className="ri-arrow-right-line text-lg group-hover:translate-x-1 transition-transform"
-                            style={{ color: 'var(--text-tertiary)' }}
-                          ></i>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           )}
 

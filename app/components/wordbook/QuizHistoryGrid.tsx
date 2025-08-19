@@ -6,9 +6,10 @@ import { quizService, QuizResult, QuizStatus } from '../../../lib/services/quizS
 
 interface QuizHistoryGridProps {
   onQuizStart: () => void;
+  selectedStatus?: 'ALL' | 'PENDING' | 'SUBMIT';
 }
 
-export default function QuizHistoryGrid({ onQuizStart }: QuizHistoryGridProps) {
+export default function QuizHistoryGrid({ onQuizStart, selectedStatus: propSelectedStatus }: QuizHistoryGridProps) {
   const router = useRouter();
   const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -16,6 +17,13 @@ export default function QuizHistoryGrid({ onQuizStart }: QuizHistoryGridProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+
+  useEffect(() => {
+    if (propSelectedStatus && propSelectedStatus !== selectedStatus) {
+      setSelectedStatus(propSelectedStatus);
+      setCurrentPage(0); // 상태 변경 시 첫 페이지로
+    }
+  }, [propSelectedStatus, selectedStatus]);
 
   useEffect(() => {
     loadQuizHistory();
@@ -141,77 +149,10 @@ export default function QuizHistoryGrid({ onQuizStart }: QuizHistoryGridProps) {
     };
   };
 
-  const filterOptions = [
-    { value: 'ALL', label: '전체', icon: 'ri-list-unordered' },
-    { value: 'PENDING', label: '진행 중', icon: 'ri-time-line' },
-    { value: 'SUBMIT', label: '완료', icon: 'ri-check-circle-line' },
-  ];
+
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div 
-        className="p-6 border-b backdrop-blur-xl"
-        style={{
-          backgroundColor: 'var(--surface-primary)',
-          borderColor: 'var(--border-secondary)'
-        }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 
-              className="text-2xl font-bold flex items-center gap-3"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <span className="text-3xl">🏆</span>
-              퀴즈 기록
-            </h2>
-            <p 
-              className="text-sm mt-1"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              총 {totalElements}개의 퀴즈 결과를 확인하세요
-            </p>
-          </div>
-          
-          <button
-            onClick={onQuizStart}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-            style={{
-              background: 'linear-gradient(135deg, var(--primary), var(--secondary))'
-            }}
-          >
-            <i className="ri-add-line"></i>
-            새 퀴즈
-          </button>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-2 p-1 rounded-2xl"
-          style={{ backgroundColor: 'var(--surface-secondary)' }}
-        >
-          {filterOptions.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => {
-                setSelectedStatus(option.value as QuizStatus | 'ALL');
-                setCurrentPage(0);
-              }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                selectedStatus === option.value ? 'shadow-md scale-105' : ''
-              }`}
-              style={{
-                backgroundColor: selectedStatus === option.value ? 'var(--primary)' : 'transparent',
-                color: selectedStatus === option.value ? 'white' : 'var(--text-primary)'
-              }}
-            >
-              <i className={option.icon}></i>
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
         {isLoading ? (
@@ -234,7 +175,9 @@ export default function QuizHistoryGrid({ onQuizStart }: QuizHistoryGridProps) {
               className="text-xl font-semibold mb-3"
               style={{ color: 'var(--text-primary)' }}
             >
-              {selectedStatus === 'ALL' ? '퀴즈 기록이 없습니다' : `${filterOptions.find(o => o.value === selectedStatus)?.label} 퀴즈가 없습니다`}
+              {selectedStatus === 'ALL' ? '퀴즈 기록이 없습니다' : 
+                selectedStatus === 'PENDING' ? '진행 중인 퀴즈가 없습니다' : 
+                '완료된 퀴즈가 없습니다'}
             </h3>
             <p 
               className="text-sm mb-8"

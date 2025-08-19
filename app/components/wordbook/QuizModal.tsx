@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { quizService, QuizLevel } from '../../../lib/services/quizService';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
 
 interface QuizModalProps {
   onClose: () => void;
@@ -14,38 +15,39 @@ export default function QuizModal({ onClose }: QuizModalProps) {
   const [selectedLevel, setSelectedLevel] = useState<QuizLevel>('A');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
 
   const quizTypes = [
     {
       id: 'random',
-      title: '전체 랜덤',
-      description: '모든 단어에서 무작위 출제',
+      title: t('quiz.types.random'),
+      description: t('quiz.types.randomDesc'),
       icon: 'ri-shuffle-line',
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: '#667eea'
+      color: 'var(--accent-primary)',
+      gradient: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
     },
     {
       id: 'level',
-      title: '레벨별 퀴즈',
-      description: '난이도를 선택해서 퀴즈',
+      title: t('quiz.types.level'),
+      description: t('quiz.types.levelDesc'),
       icon: 'ri-bar-chart-line',
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-      color: '#f093fb'
+      color: 'var(--success)',
+      gradient: 'linear-gradient(135deg, var(--success), var(--accent-success))'
     },
     {
-      id: 'today',
-      title: '날짜별 퀴즈',
-      description: '특정 날짜에 학습한 단어',
-      icon: 'ri-calendar-check-line',
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-      color: '#4facfe'
+      id: 'daily',
+      title: t('quiz.types.daily'),
+      description: t('quiz.types.dailyDesc'),
+      icon: 'ri-calendar-line',
+      color: 'var(--info)',
+      gradient: 'linear-gradient(135deg, var(--info), var(--accent-info))'
     }
   ];
 
   const levels = [
-    { value: 'A', label: 'A 레벨', description: '초급 단어', color: '#10b981' },
-    { value: 'B', label: 'B 레벨', description: '중급 단어', color: '#f59e0b' },
-    { value: 'C', label: 'C 레벨', description: '고급 단어', color: '#ef4444' }
+    { value: 'A', label: t('quiz.levels.a'), description: t('quiz.levels.aDesc'), color: 'var(--success)' },
+    { value: 'B', label: t('quiz.levels.b'), description: t('quiz.levels.bDesc'), color: 'var(--warning)' },
+    { value: 'C', label: t('quiz.levels.c'), description: t('quiz.levels.cDesc'), color: 'var(--error)' }
   ];
 
   const handleStartQuiz = async () => {
@@ -69,60 +71,43 @@ export default function QuizModal({ onClose }: QuizModalProps) {
       router.push(`/quiz/${quiz.quizUUID}`);
     } catch (error) {
       console.error('퀴즈 시작 실패:', error);
-      alert('퀴즈를 시작할 수 없습니다. 다시 시도해주세요.');
+      alert(t('quiz.errors.startFailed'));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      {/* Modal */}
-      <div 
-        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border"
+        className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-2xl"
         style={{
           backgroundColor: 'var(--surface-primary)',
-          borderColor: 'var(--border-primary)'
+          borderColor: 'var(--border-secondary)'
         }}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 p-6 border-b backdrop-blur-xl"
-          style={{
-            backgroundColor: 'var(--surface-primary)',
-            borderColor: 'var(--border-secondary)'
-          }}
-        >
+        <div className="p-6 border-b" style={{ borderColor: 'var(--border-secondary)' }}>
           <div className="flex items-center justify-between">
             <div>
               <h2 
                 className="text-2xl font-bold"
                 style={{ color: 'var(--text-primary)' }}
               >
-                🎯 퀴즈 시작하기
+                🎯 {t('quiz.start.title')}
               </h2>
               <p 
-                className="text-sm mt-1"
+                className="mt-2"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                퀴즈 유형을 선택하고 학습을 시작하세요
+                {t('quiz.start.subtitle')}
               </p>
             </div>
-            
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full hover:bg-opacity-20 transition-all flex items-center justify-center"
-              style={{ backgroundColor: 'var(--surface-secondary)' }}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <i 
-                className="ri-close-line text-lg"
-                style={{ color: 'var(--text-secondary)' }}
-              ></i>
+              <i className="ri-close-line text-2xl" style={{ color: 'var(--text-secondary)' }}></i>
             </button>
           </div>
         </div>
@@ -330,11 +315,8 @@ export default function QuizModal({ onClose }: QuizModalProps) {
 
         {/* Footer */}
         <div 
-          className="sticky bottom-0 p-6 border-t backdrop-blur-xl"
-          style={{
-            backgroundColor: 'var(--surface-primary)',
-            borderColor: 'var(--border-secondary)'
-          }}
+          className="sticky bottom-0 p-6 border-t"
+          style={{ borderColor: 'var(--border-secondary)' }}
         >
           <div className="flex gap-3">
             <button

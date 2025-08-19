@@ -29,36 +29,37 @@ export const translations = {
       next: '다음',
       previous: '이전',
       send: '전송',
+      retry: '다시 시도',
       profile: '프로필',
       settings: '설정',
       notifications: '알림',
-  notification: {
-    title: '알림',
-    empty: '알림이 없습니다.',
-    markAsRead: '읽음으로 표시',
-    clearAll: '모든 알림 지우기',
-    chat: '채팅',
-    system: '시스템',
-    chatRequest: '채팅 요청',
-    all: '전체',
-    total: '총 {count}개의 알림',
-    newMessage: '새 메시지',
-    systemNotification: '시스템 알림',
-    chatRequestNotification: '채팅 요청',
-    notification: '알림',
-    chatRoom: '채팅방',
-    sender: '발신자',
-    content: '내용',
-    requester: '요청자',
-    message: '메시지',
-    noPreview: '미리보기 없음',
-    connectionStatus: {
-      connected: 'SSE 연결됨',
-      disconnected: 'SSE 연결 해제됨',
-      connecting: 'SSE 연결 중...',
-      error: 'SSE 연결 오류'
-    }
-  },
+      notification: {
+        title: '알림',
+        empty: '알림이 없습니다.',
+        markAsRead: '읽음으로 표시',
+        clearAll: '모든 알림 지우기',
+        chat: '채팅',
+        system: '시스템',
+        chatRequest: '채팅 요청',
+        all: '전체',
+        total: '총 {count}개의 알림',
+        newMessage: '새 메시지',
+        systemNotification: '시스템 알림',
+        chatRequestNotification: '채팅 요청',
+        notification: '알림',
+        chatRoom: '채팅방',
+        sender: '발신자',
+        content: '내용',
+        requester: '요청자',
+        message: '메시지',
+        noPreview: '미리보기 없음',
+        connectionStatus: {
+          connected: 'SSE 연결됨',
+          disconnected: 'SSE 연결 해제됨',
+          connecting: 'SSE 연결 중...',
+          error: 'SSE 연결 오류'
+        }
+      },
       language: '언어',
       theme: '테마',
       light: '라이트',
@@ -67,6 +68,11 @@ export const translations = {
       english: 'English',
       words: '개의 단어',
       today: '오늘',
+      yesterday: '어제',
+      daysAgo: '{days}일 전',
+      week: '주간',
+      month: '월간',
+      year: '연간',
       added: '추가',
       from: '에서',
       pronunciation: '발음 듣기',
@@ -76,12 +82,59 @@ export const translations = {
       examples: '예문',
       tags: '태그',
       similarWords: '유사 단어 퀴즈',
-      delete: '삭제',
       difficulty: {
         beginner: '초급',
         intermediate: '중급',
         advanced: '고급'
-      }
+      },
+      easyLevel: '쉬움',
+      mediumLevel: '보통',
+      hardLevel: '어려움',
+      totalWords: '전체 단어',
+      todayAdded: '오늘 추가',
+      reviewNeeded: '복습 필요',
+      noun: '명사',
+      nounDesc: '사물이나 개념을 나타내요',
+      verb: '동사',
+      verbDesc: '행동이나 상태를 나타내요',
+      adjective: '형용사',
+      adjectiveDesc: '성질이나 상태를 나타내요',
+      adverb: '부사',
+      adverbDesc: '동작의 방법을 나타내요',
+      preposition: '전치사',
+      prepositionDesc: '명사와 다른 말의 관계를 나타내요',
+      conjunction: '접속사',
+      conjunctionDesc: '단어나 문장을 연결해요',
+      posInfo: '품사 정보',
+      pageNotFound: '페이지를 찾을 수 없습니다',
+      pageNotFoundDesc: '요청하신 페이지가 존재하지 않습니다',
+      checking_auth: '인증 상태를 확인하고 있습니다...',
+      login_required: '로그인이 필요합니다',
+      access_required: '이 페이지에 접근하려면 로그인이 필요합니다.',
+      go_to_login: '로그인 페이지로 이동',
+      meanings: '개 의미',
+      loading: '로딩 중...',
+      retry: '다시 시도',
+      add: '추가',
+      sort: '정렬',
+      more: '더보기',
+      less: '접기',
+      noun: '명사',
+      nounDesc: '사물이나 개념을 나타내요',
+      verb: '동사',
+      verbDesc: '동작이나 상태를 나타내요',
+      adjective: '형용사',
+      adjectiveDesc: '사물의 성질이나 상태를 나타내요',
+      adverb: '부사',
+      adverbDesc: '동사나 형용사를 꾸며주는 말이에요',
+      pronoun: '대명사',
+      pronounDesc: '명사를 대신하는 말이에요',
+      preposition: '전치사',
+      prepositionDesc: '명사 앞에 붙어 관계를 나타내요',
+      conjunction: '접속사',
+      conjunctionDesc: '문장이나 단어를 연결해요',
+      interjection: '감탄사',
+      interjectionDesc: '감정이나 느낌을 나타내요',
     },
     nav: {
       home: '홈',
@@ -90,7 +143,97 @@ export const translations = {
       wordbook: '단어장',
       quiz: '퀴즈',
       me: '마이페이지',
-
+    },
+    quiz: {
+      history: '퀴즈 기록',
+      totalResults: '총 {count}개의 퀴즈 결과를 확인하세요',
+      status: {
+        all: '전체',
+        pending: '진행 중',
+        submit: '완료'
+      },
+      actions: {
+        retake: '재시험',
+        viewResult: '결과 보기',
+        continue: '계속하기',
+        previous: '이전 문제',
+        next: '다음 문제',
+        submit: '퀴즈 완료',
+        backToWordbook: '단어장으로 돌아가기',
+        newQuiz: '새 퀴즈 시작'
+      },
+      questions: {
+        next: '다음',
+        previous: '이전',
+        submit: '제출',
+        selectAnswer: '답을 선택하세요',
+        questionNumber: '문제 {current} / {total}'
+      },
+      results: {
+        score: '점수',
+        correctAnswers: '정답 수',
+        totalQuestions: '총 문제 수',
+        completionTime: '완료 시간',
+        retake: '재시험',
+        backToHistory: '기록으로 돌아가기'
+      },
+      types: {
+        daily: '📅 날짜별 퀴즈',
+        random: '🎲 랜덤 퀴즈'
+      },
+      progress: '진행률',
+      loading: '퀴즈를 불러오는 중...',
+      submitting: '제출 중...',
+      errors: {
+        loadFailed: '퀴즈를 불러올 수 없습니다.',
+        submitFailed: '퀴즈 제출에 실패했습니다. 다시 시도해주세요.',
+        notFound: '퀴즈를 찾을 수 없습니다',
+        notFoundDesc: '요청하신 퀴즈가 존재하지 않거나 접근 권한이 없습니다'
+      },
+      confirm: {
+        title: '퀴즈를 제출하시겠습니까?',
+        description: '제출 후에는 답안을 수정할 수 없습니다.',
+        unanswered: '미응답 문제: {count}개',
+        submit: '제출하기'
+      },
+      questionLabel: '문제',
+      chooseCorrectMeaning: '다음 단어의 가장 적절한 의미를 선택하세요',
+      dailyWords: '일일 단어',
+      todayWords: '오늘의 단어',
+      allWords: '전체 단어',
+      status: {
+        all: '전체',
+        pending: '진행 중',
+        submit: '완료',
+        inProgress: '진행 중'
+      },
+      questions: '문항',
+      points: '점',
+      correctAnswers: '정답',
+      retakeQuiz: '재시험',
+      start: {
+        title: '퀴즈 시작하기',
+        subtitle: '퀴즈 유형을 선택하고 학습을 시작하세요',
+      },
+      types: {
+        daily: '📅 날짜별 퀴즈',
+        random: '🎲 랜덤 퀴즈',
+        randomDesc: '모든 단어에서 무작위 출제',
+        level: '레벨별 퀴즈',
+        levelDesc: '난이도를 선택해서 퀴즈',
+        dailyDesc: '특정 날짜에 학습한 단어',
+      },
+      levels: {
+        a: 'A 레벨',
+        aDesc: '초급 단어',
+        b: 'B 레벨',
+        bDesc: '중급 단어',
+        c: 'C 레벨',
+        cDesc: '고급 단어',
+      },
+      errors: {
+        startFailed: '퀴즈를 시작할 수 없습니다. 다시 시도해주세요.',
+      }
     },
     home: {
       recentWords: '최근 단어',
@@ -164,6 +307,13 @@ export const translations = {
       translationLabel: '번역',
       connectTryAgain: '연결시도',
       forceConnect: '강제 연결 시도',
+      hideTranslation: '번역 숨기기',
+      copyTranslation: '번역 복사하기',
+      retranslateWithAI: 'AI로 재번역',
+      addEmoji: '이모지 추가',
+      enterToSend: 'Enter로 전송',
+      shiftEnterForNewLine: 'Shift+Enter로 줄바꿈',
+      hoverToTranslate: '메시지에 마우스를 올려 번역',
       status: {
         online: '온라인',
         offline: '오프라인',
@@ -193,10 +343,20 @@ export const translations = {
         userBlocked: '사용자를 차단했습니다',
         notificationsMuted: '알림을 음소거했습니다',
         translationFailed: '번역에 실패했습니다',
-        wordAdded: '를 단어장에 추가했습니다',
-        requestAccepted: '채팅 요청을 수락했습니다',
-        requestRejected: '채팅 요청을 거절했습니다',
-        requestError: '요청 처리 중 오류가 발생했습니다'
+        retranslationFailed: '재번역에 실패했습니다.',
+        wordAdded: '이 단어장에 추가되었습니다.',
+        messageSent: '메시지가 전송되었습니다.',
+        messageFailed: '메시지 전송에 실패했습니다.',
+        connectionFailed: '연결에 실패했습니다.',
+        reconnecting: '재연결 중...',
+        connected: '연결되었습니다.',
+        disconnected: '연결이 끊어졌습니다.',
+        translationSuccess: '번역이 성공적으로 완료되었습니다.',
+        translationFailed: '번역에 실패했습니다.',
+        retranslationSuccess: 'AI 재번역이 성공적으로 완료되었습니다.',
+        retranslationFailed: 'AI 재번역에 실패했습니다.',
+        translationCopied: '번역이 클립보드에 복사되었습니다.',
+        wordAdded: '이 단어장에 추가되었습니다.'
       },
       responses: {
         yes: '네, 알겠습니다!',
@@ -250,6 +410,11 @@ export const translations = {
       addWord: '단어 추가',
       search: {
         placeholder: '단어나 의미로 검색...'
+      },
+      detail: {
+        basicInfo: '기본 정보',
+        examples: '예문',
+        quizHistory: '퀴즈 기록',
       },
       difficulty: {
         level: '레벨'
@@ -328,24 +493,7 @@ export const translations = {
       stats: {
         mastered: '마스터',
         reviewNeeded: '복습 필요'
-      },
-      common: {
-        words: '개의 단어',
-        today: '오늘',
-        added: '추가',
-        wordSearch: '단어 검색...',
-        totalWords: '전체 단어',
-        todayAdded: '오늘 추가',
-        reviewNeeded: '복습 필요',
-        easyLevel: '쉬움',
-        mediumLevel: '보통',
-        hardLevel: '어려움',
-        noun: '명사',
-        verb: '동사',
-        adjective: '형용사',
-        adverb: '부사'
-      },
-      words: '개의 단어'
+      }
     },
     me: {
       title: '마이페이지',
@@ -421,6 +569,51 @@ export const translations = {
         typeDelete: '확인을 위해 "DELETE"를 입력하세요:',
         confirmDelete: '계정 삭제하기',
         deleting: '삭제 중...'
+      },
+      dashboard: {
+        title: '학습 대시보드',
+        subtitle: '오늘의 학습 현황과 주간 통계를 확인하세요',
+        totalWords: '총 단어 개수',
+        learningStreak: '연속 학습일',
+        reviewNeeded: '복습 필요',
+        encouragement: '격려 메시지',
+        period: {
+          week: '주간',
+          month: '월간'
+        },
+        learningGrass: {
+          title: '학습 잔디',
+          description: '매일 학습한 단어 개수를 시각화합니다',
+          noData: '아직 학습 데이터가 없습니다'
+        },
+        scoreChart: {
+          title: '학습 성과',
+          description: '퀴즈 점수 변화를 확인하세요',
+          noData: '아직 퀴즈 기록이 없습니다'
+        },
+        wrongAnswers: {
+          title: '틀린 단어 목록',
+          description: '최근 퀴즈에서 틀린 단어들을 복습해보세요',
+          review: '복습하기',
+          noData: {
+            title: '완벽합니다!',
+            description: '아직 틀린 단어가 없습니다. 계속해서 좋은 성과를 유지하세요!'
+          }
+        },
+        noData: {
+          title: '데이터가 없습니다',
+          description: '아직 학습 데이터가 충분하지 않습니다. 학습을 시작해보세요!'
+        }
+      },
+      quickActions: {
+        addWord: '새 단어 추가',
+        addWordDesc: '채팅에서 단어 저장',
+        startQuiz: '퀴즈 시작',
+        startQuizDesc: '학습한 단어로 퀴즈 풀기',
+        findPartner: '파트너 찾기',
+        findPartnerDesc: '대화 파트너와 연결',
+        viewStats: '통계 보기',
+        viewStatsDesc: '상세한 학습 통계 확인'
       }
     },
     landing: {
@@ -523,12 +716,12 @@ export const translations = {
   en: {
     common: {
       appName: 'LangChat',
-      appTitle: 'LangChat - Learn languages by chatting with the world',
-      appDescription: 'A social learning platform for learning languages through real-time chat',
+      appTitle: 'LangChat - Learn languages through conversation',
+      appDescription: 'Social learning platform for language learning through real-time chat',
       welcome: 'Welcome',
       login: 'Login',
       logout: 'Logout',
-      signup: 'Sign up',
+      signup: 'Sign Up',
       email: 'Email',
       password: 'Password',
       confirm: 'Confirm',
@@ -549,12 +742,13 @@ export const translations = {
       next: 'Next',
       previous: 'Previous',
       send: 'Send',
+      retry: 'Retry',
       profile: 'Profile',
       settings: 'Settings',
       notifications: 'Notifications',
       notification: {
         title: 'Notifications',
-        empty: 'No notifications',
+        empty: 'No notifications.',
         markAsRead: 'Mark as read',
         clearAll: 'Clear all notifications',
         chat: 'Chat',
@@ -562,11 +756,11 @@ export const translations = {
         chatRequest: 'Chat Request',
         all: 'All',
         total: 'Total {count} notifications',
-        newMessage: 'New Message',
-        systemNotification: 'System Notification',
-        chatRequestNotification: 'Chat Request',
+        newMessage: 'New message',
+        systemNotification: 'System notification',
+        chatRequestNotification: 'Chat request',
         notification: 'Notification',
-        chatRoom: 'Chat Room',
+        chatRoom: 'Chat room',
         sender: 'Sender',
         content: 'Content',
         requester: 'Requester',
@@ -587,21 +781,73 @@ export const translations = {
       english: 'English',
       words: ' words',
       today: 'Today',
-      added: ' added',
+      yesterday: 'Yesterday',
+      daysAgo: '{days} days ago',
+      week: 'Weekly',
+      month: 'Monthly',
+      year: 'Annually',
+      added: 'Added',
       from: 'from',
       pronunciation: 'Listen to pronunciation',
-      expand: 'Show more',
+      expand: 'Expand',
       collapse: 'Collapse',
       meanings: 'Meanings',
       examples: 'Examples',
       tags: 'Tags',
-      similarWords: 'Similar words quiz',
-      delete: 'Delete',
+      similarWords: 'Similar Words Quiz',
       difficulty: {
         beginner: 'Beginner',
         intermediate: 'Intermediate',
         advanced: 'Advanced'
-      }
+      },
+      easyLevel: 'Easy',
+      mediumLevel: 'Medium',
+      hardLevel: 'Hard',
+      totalWords: 'All Words',
+      todayAdded: 'Added Today',
+      reviewNeeded: 'Review Needed',
+      noun: 'Noun',
+      nounDesc: 'Indicates a thing or concept',
+      verb: 'Verb',
+      verbDesc: 'Indicates an action or state',
+      adjective: 'Adjective',
+      adjectiveDesc: 'Indicates a quality or state',
+      adverb: 'Adverb',
+      adverbDesc: 'Indicates how an action is performed',
+      preposition: 'Preposition',
+      prepositionDesc: 'Indicates the relationship between a noun and another word',
+      conjunction: 'Conjunction',
+      conjunctionDesc: 'Links words or sentences',
+      posInfo: 'Part of Speech Info',
+      pageNotFound: 'Page not found',
+      pageNotFoundDesc: 'The requested page does not exist.',
+      checking_auth: 'Checking authentication status...',
+      login_required: 'Login is required',
+      access_required: 'You need to log in to access this page.',
+      go_to_login: 'Go to login page',
+      meanings: '{count} meanings',
+      loading: 'Loading...',
+      retry: 'Retry',
+      add: 'Add',
+      sort: 'Sort',
+      more: 'More',
+      less: 'Less',
+      noun: 'Noun',
+      nounDesc: 'Indicates a thing or concept',
+      verb: 'Verb',
+      verbDesc: 'Indicates an action or state',
+      adjective: 'Adjective',
+      adjectiveDesc: 'Indicates a quality or state',
+      adverb: 'Adverb',
+      adverbDesc: 'Indicates how an action is performed',
+      pronoun: 'Pronoun',
+      pronounDesc: 'Indicates a word that replaces a noun',
+      preposition: 'Preposition',
+      prepositionDesc: 'Indicates the relationship between a noun and another word',
+      conjunction: 'Conjunction',
+      conjunctionDesc: 'Links words or sentences',
+      interjection: 'Interjection',
+      interjectionDesc: 'Indicates an emotion or feeling',
     },
     nav: {
       home: 'Home',
@@ -684,6 +930,21 @@ export const translations = {
       translationLabel: 'Translation',
       connectTryAgain: 'Try Connect',
       forceConnect: 'Force connection attempt',
+      hideTranslation: 'Hide Translation',
+      copyTranslation: 'Copy Translation',
+      retranslateWithAI: 'Retranslate with AI',
+      addEmoji: 'Add Emoji',
+      enterToSend: 'Enter to send',
+      shiftEnterForNewLine: 'Shift+Enter for new line',
+      hoverToTranslate: 'Hover to translate',
+      toast: {
+        translationSuccess: 'Translation completed successfully',
+        translationFailed: 'Translation failed',
+        retranslationSuccess: 'AI retranslation completed successfully',
+        retranslationFailed: 'AI retranslation failed',
+        translationCopied: 'Translation copied to clipboard',
+        wordAdded: ' has been added to your wordbook'
+      },
       status: {
         online: 'Online',
         offline: 'Offline',
@@ -698,33 +959,16 @@ export const translations = {
       },
       empty: {
         selectChat: 'Select a chat',
-        selectChatDesc: 'Select an existing chat from the left list or\nfind a new language exchange partner.',
+        selectChatDesc: 'Choose a conversation to start chatting',
         findNewFriends: 'Find New Friends',
-        realtimeTranslation: 'Realtime Translation',
+        realtimeTranslation: 'Real-time Translation',
         wordbookIntegration: 'Wordbook Integration',
-        chatTips: 'Chat Tips',
-        tip1: 'Long press a message to translate and add to your wordbook.',
-        tip2: 'Practice with your partner in their native language to improve your skills.',
-        tip3: 'Chat with partners who share similar interests for more fun!'
-      },
-      toast: {
-        roomLeft: 'Left chat room',
-        leaveFailed: 'Failed to leave chat room',
-        userBlocked: 'User blocked',
-        notificationsMuted: 'Notifications muted',
-        translationFailed: 'Translation failed',
-        wordAdded: 'added to wordbook.',
-        requestAccepted: 'Chat request accepted',
-        requestRejected: 'Chat request rejected',
-        requestError: 'Error processing request'
-      },
-      responses: {
-        yes: 'Yes, I understand!',
-        soundsGreat: 'That sounds great!',
-        goodIdea: 'That\'s a good idea.',
-        thankYou: 'Thank you for your help.',
-        veryHelpful: 'That was very helpful.',
-        explainAgain: 'Could you explain that again?'
+        tips: {
+          title: 'Chat Tips',
+          translation: 'Hover over messages to translate them',
+          wordbook: 'Select text to add words to your wordbook',
+          shortcuts: 'Use Enter to send, Shift+Enter for new line'
+        }
       }
     },
     explore: {
@@ -770,6 +1014,11 @@ export const translations = {
       addWord: 'Add Word',
       search: {
         placeholder: 'Search by word or meaning...'
+      },
+      detail: {
+        basicInfo: 'Basic Info',
+        examples: 'Examples',
+        quizHistory: 'Quiz History',
       },
       difficulty: {
         level: 'Level'
@@ -843,29 +1092,63 @@ export const translations = {
         incorrect: 'Incorrect',
         questionLabel: 'Question',
         chooseCorrectMeaning: 'Choose the most appropriate meaning for the following word',
-        chooseCorrectWord: 'Choose the word that matches the following meaning'
+        chooseCorrectWord: 'Choose the word that matches the following meaning',
+        history: 'Quiz History',
+        totalResults: 'View {count} quiz results',
+        status: {
+          all: 'All',
+          pending: 'In Progress',
+          submit: 'Completed'
+        },
+        actions: {
+          retake: 'Retake',
+          viewResult: 'View Result',
+          continue: 'Continue',
+          previous: 'Previous Question',
+          next: 'Next Question',
+          submit: 'Complete Quiz',
+          backToWordbook: 'Back to Wordbook',
+          newQuiz: 'Start New Quiz'
+        },
+        questions: {
+          next: 'Next',
+          previous: 'Previous',
+          submit: 'Submit',
+          selectAnswer: 'Select your answer',
+          questionNumber: 'Question {current} / {total}'
+        },
+        results: {
+          score: 'Score',
+          correctAnswers: 'Correct Answers',
+          totalQuestions: 'Total Questions',
+          completionTime: 'Completion Time',
+          retake: 'Retake',
+          backToHistory: 'Back to History'
+        },
+        types: {
+          daily: '📅 Daily Quiz',
+          random: '🎲 Random Quiz'
+        },
+        progress: 'Progress',
+        loading: 'Loading quiz...',
+        submitting: 'Submitting...',
+        errors: {
+          loadFailed: 'Failed to load quiz.',
+          submitFailed: 'Failed to submit quiz. Please try again.',
+          notFound: 'Quiz not found',
+          notFoundDesc: 'The requested quiz does not exist or you do not have access'
+        },
+        confirm: {
+          title: 'Submit the quiz?',
+          description: 'You cannot modify answers after submission.',
+          unanswered: 'Unanswered questions: {count}',
+          submit: 'Submit'
+        }
       },
       stats: {
         mastered: 'Mastered',
         reviewNeeded: 'Review Needed'
-      },
-      common: {
-        words: ' words',
-        today: 'Today',
-        added: ' added',
-        wordSearch: 'Search words...',
-        totalWords: 'All Words',
-        todayAdded: 'Added Today',
-        reviewNeeded: 'Review Needed',
-        easyLevel: 'Easy',
-        mediumLevel: 'Medium',
-        hardLevel: 'Hard',
-        noun: 'Noun',
-        verb: 'Verb',
-        adjective: 'Adjective',
-        adverb: 'Adverb'
-      },
-      words: ' words'
+      }
     },
     me: {
       title: 'My Page',
@@ -941,6 +1224,51 @@ export const translations = {
         typeDelete: 'Type "DELETE" to confirm:',
         confirmDelete: 'Delete Account',
         deleting: 'Deleting...'
+      },
+      dashboard: {
+        title: 'Learning Dashboard',
+        subtitle: 'Check your today\'s learning status and weekly statistics',
+        totalWords: 'Total Words',
+        learningStreak: 'Learning Streak',
+        reviewNeeded: 'Review Needed',
+        encouragement: 'Encouragement',
+        period: {
+          week: 'Week',
+          month: 'Month'
+        },
+        learningGrass: {
+          title: 'Learning Grass',
+          description: 'Visualize daily word learning count',
+          noData: 'No learning data yet'
+        },
+        scoreChart: {
+          title: 'Learning Performance',
+          description: 'Check your quiz score changes',
+          noData: 'No quiz records yet'
+        },
+        wrongAnswers: {
+          title: 'Wrong Words List',
+          description: 'Review words you got wrong in recent quizzes',
+          review: 'Review',
+          noData: {
+            title: 'Perfect!',
+            description: 'No wrong words yet. Keep maintaining good performance!'
+          }
+        },
+        noData: {
+          title: 'No Data',
+          description: 'No learning data yet. Start learning!'
+        }
+      },
+      quickActions: {
+        addWord: 'Add New Word',
+        addWordDesc: 'Save words from chat',
+        startQuiz: 'Start Quiz',
+        startQuizDesc: 'Review today\'s words',
+        findPartner: 'Find Partner',
+        findPartnerDesc: 'New Friends',
+        viewStats: 'View Stats',
+        viewStatsDesc: 'Detailed Analysis',
       }
     },
     landing: {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Word } from '../../../lib/stores/wordbook';
+import { useTranslation } from 'react-i18next';
 
 interface WordDetailCardProps {
   word: Word;
@@ -10,41 +11,34 @@ interface WordDetailCardProps {
 
 export default function WordDetailCard({ word, onClose }: WordDetailCardProps) {
   const [activeTab, setActiveTab] = useState<'info' | 'examples' | 'quiz'>('info');
+  const { t } = useTranslation();
 
-  const getDifficultyConfig = (difficulty: number) => {
-    if (difficulty <= 2) return { 
-      color: '#10b981', 
-      bg: 'rgba(16, 185, 129, 0.1)',
-      label: '쉬움',
-      emoji: '🟢',
-      description: '잘 알고 있는 단어예요'
-    };
-    if (difficulty <= 3) return { 
-      color: '#f59e0b', 
-      bg: 'rgba(245, 158, 11, 0.1)',
-      label: '보통',
-      emoji: '🟡',
-      description: '적당히 어려운 단어예요'
-    };
-    return { 
-      color: '#ef4444', 
-      bg: 'rgba(239, 68, 68, 0.1)',
-      label: '어려움',
-      emoji: '🔴',
-      description: '더 연습이 필요한 단어예요'
-    };
+  const getDifficultyConfig = (level: string) => {
+    switch (level) {
+      case 'a1':
+      case 'a2':
+        return { color: 'var(--success)', label: t('common.easyLevel') };
+      case 'b1':
+      case 'b2':
+        return { color: 'var(--warning)', label: t('common.mediumLevel') };
+      case 'c1':
+      case 'c2':
+        return { color: 'var(--error)', label: t('common.hardLevel') };
+      default:
+        return { color: 'var(--text-tertiary)', label: level };
+    }
   };
 
-  const getPartOfSpeechConfig = (pos: string) => {
+  const getPosConfig = (pos: string) => {
     const posMap: Record<string, { color: string; emoji: string; label: string; description: string }> = {
-      'noun': { color: '#8b5cf6', emoji: '📖', label: '명사', description: '사물이나 개념을 나타내요' },
-      'verb': { color: '#06b6d4', emoji: '🏃', label: '동사', description: '행동이나 상태를 나타내요' },
-      'adjective': { color: '#f97316', emoji: '⭐', label: '형용사', description: '성질이나 상태를 나타내요' },
-      'adverb': { color: '#ec4899', emoji: '⚡', label: '부사', description: '동작의 방법을 나타내요' },
-      'preposition': { color: '#64748b', emoji: '🔗', label: '전치사', description: '명사와 다른 말의 관계를 나타내요' },
-      'conjunction': { color: '#94a3b8', emoji: '🔀', label: '접속사', description: '단어나 문장을 연결해요' }
+      'noun': { color: 'var(--accent-primary)', emoji: '📖', label: t('common.noun'), description: t('common.nounDesc') },
+      'verb': { color: 'var(--info)', emoji: '🏃', label: t('common.verb'), description: t('common.verbDesc') },
+      'adjective': { color: 'var(--accent-orange)', emoji: '⭐', label: t('common.adjective'), description: t('common.adjectiveDesc') },
+      'adverb': { color: 'var(--accent-secondary)', emoji: '⚡', label: t('common.adverb'), description: t('common.adverbDesc') },
+      'preposition': { color: 'var(--text-tertiary)', emoji: '🔗', label: t('common.preposition'), description: t('common.prepositionDesc') },
+      'conjunction': { color: 'var(--text-quaternary)', emoji: '🔀', label: t('common.conjunction'), description: t('common.conjunctionDesc') }
     };
-    return posMap[pos] || { color: '#64748b', emoji: '📝', label: pos, description: '품사 정보' };
+    return posMap[pos] || { color: 'var(--text-tertiary)', emoji: '📝', label: pos, description: t('common.posInfo') };
   };
 
   const formatDate = (dateString: string) => {
@@ -59,12 +53,12 @@ export default function WordDetailCard({ word, onClose }: WordDetailCardProps) {
   };
 
   const difficultyConfig = getDifficultyConfig(word.difficulty);
-  const posConfig = getPartOfSpeechConfig(word.partOfSpeech);
+  const posConfig = getPosConfig(word.partOfSpeech);
 
   const tabs = [
-    { id: 'info', label: '기본 정보', icon: 'ri-information-line' },
-    { id: 'examples', label: '예문', icon: 'ri-chat-quote-line' },
-    { id: 'quiz', label: '퀴즈 기록', icon: 'ri-trophy-line' }
+    { id: 'info', label: t('wordbook.detail.basicInfo'), icon: 'ri-information-line' },
+    { id: 'examples', label: t('wordbook.detail.examples'), icon: 'ri-chat-quote-line' },
+    { id: 'quiz', label: t('wordbook.detail.quizHistory'), icon: 'ri-trophy-line' }
   ];
 
   return (
@@ -99,8 +93,8 @@ export default function WordDetailCard({ word, onClose }: WordDetailCardProps) {
               <div 
                 className="flex items-center gap-2 px-3 py-1 rounded-lg"
                 style={{
-                  backgroundColor: difficultyConfig.bg,
-                  color: difficultyConfig.color
+                  backgroundColor: difficultyConfig.color,
+                  color: 'white'
                 }}
               >
                 <span>{difficultyConfig.emoji}</span>
@@ -244,7 +238,7 @@ export default function WordDetailCard({ word, onClose }: WordDetailCardProps) {
               <div 
                 className="p-4 rounded-xl border-l-4"
                 style={{
-                  backgroundColor: difficultyConfig.bg,
+                  backgroundColor: difficultyConfig.color,
                   borderColor: difficultyConfig.color
                 }}
               >

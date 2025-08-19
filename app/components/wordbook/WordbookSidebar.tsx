@@ -23,6 +23,13 @@ interface WordbookSidebarProps {
   onSearchChange: (query: string) => void;
   activeView: 'words' | 'quiz-history';
   onViewChange: (view: 'words' | 'quiz-history') => void;
+  quizStats?: {
+    total: number;
+    pending: number;
+    completed: number;
+  };
+  selectedQuizStatus?: 'ALL' | 'PENDING' | 'SUBMIT';
+  onQuizStatusChange?: (status: 'ALL' | 'PENDING' | 'SUBMIT') => void;
 }
 
 export default function WordbookSidebar({
@@ -33,10 +40,17 @@ export default function WordbookSidebar({
   searchQuery,
   onSearchChange,
   activeView,
-  onViewChange
+  onViewChange,
+  quizStats,
+  selectedQuizStatus,
+  onQuizStatusChange,
 }: WordbookSidebarProps) {
   const router = useRouter();
   const { t } = useTranslation(['wordbook', 'common']);
+  
+  // 기본값 설정으로 안전한 접근 보장
+  const safeQuizStats = quizStats || { total: 0, pending: 0, completed: 0 };
+  const safeSelectedQuizStatus = selectedQuizStatus || 'ALL';
 
   const categoryGroups = [
     {
@@ -56,7 +70,7 @@ export default function WordbookSidebar({
           count: stats.today,
           icon: 'ri-calendar-line',
           color: 'var(--success)',
-          gradient: 'linear-gradient(135deg, #10b981, #059669)'
+          gradient: 'linear-gradient(135deg, var(--success), var(--info))'
         },
         {
           id: 'review',
@@ -64,7 +78,7 @@ export default function WordbookSidebar({
           count: stats.review,
           icon: 'ri-refresh-line',
           color: 'var(--warning)',
-          gradient: 'linear-gradient(135deg, #f59e0b, #d97706)'
+          gradient: 'linear-gradient(135deg, var(--warning), var(--accent-orange))'
         }
       ]
     },
@@ -76,24 +90,24 @@ export default function WordbookSidebar({
           label: t('common.easyLevel'),
           count: stats.easy,
           icon: 'ri-check-circle-line',
-          color: '#10b981',
-          gradient: 'linear-gradient(135deg, #10b981, #059669)'
+          color: 'var(--success)',
+          gradient: 'linear-gradient(135deg, var(--success), var(--accent-success))'
         },
         {
           id: 'medium',
           label: t('common.mediumLevel'),
           count: stats.medium,
           icon: 'ri-time-line',
-          color: '#f59e0b',
-          gradient: 'linear-gradient(135deg, #f59e0b, #d97706)'
+          color: 'var(--warning)',
+          gradient: 'linear-gradient(135deg, var(--warning), var(--accent-warning))'
         },
         {
           id: 'hard',
           label: t('common.hardLevel'),
           count: stats.hard,
           icon: 'ri-alert-circle-line',
-          color: '#ef4444',
-          gradient: 'linear-gradient(135deg, #ef4444, #dc2626)'
+          color: 'var(--error)',
+          gradient: 'linear-gradient(135deg, var(--error), var(--accent-danger))'
         }
       ]
     },
@@ -105,32 +119,32 @@ export default function WordbookSidebar({
           label: t('common.noun'),
           count: stats.nouns,
           icon: 'ri-bookmark-line',
-          color: '#8b5cf6',
-          gradient: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
+          color: 'var(--accent-primary)',
+          gradient: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
         },
         {
           id: 'verb',
           label: t('common.verb'),
           count: stats.verbs,
           icon: 'ri-play-line',
-          color: '#06b6d4',
-          gradient: 'linear-gradient(135deg, #06b6d4, #0891b2)'
+          color: 'var(--info)',
+          gradient: 'linear-gradient(135deg, var(--info), var(--accent-primary))'
         },
         {
           id: 'adjective',
           label: t('common.adjective'),
           count: stats.adjectives,
           icon: 'ri-star-line',
-          color: '#f97316',
-          gradient: 'linear-gradient(135deg, #f97316, #ea580c)'
+          color: 'var(--accent-orange)',
+          gradient: 'linear-gradient(135deg, var(--accent-orange), var(--warning))'
         },
         {
           id: 'adverb',
           label: t('common.adverb'),
           count: stats.adverbs,
-          icon: 'ri-speed-line',
-          color: '#ec4899',
-          gradient: 'linear-gradient(135deg, #ec4899, #db2777)'
+          icon: 'ri-flashlight-line',
+          color: 'var(--accent-success)',
+          gradient: 'linear-gradient(135deg, var(--accent-success), var(--success))'
         }
       ]
     }
@@ -139,27 +153,14 @@ export default function WordbookSidebar({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-6 border-b" style={{ borderColor: 'var(--border-secondary)' }}>
-        <div className="flex items-center gap-3 mb-4">
-          <div 
-            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
-            style={{
-              background: 'linear-gradient(135deg, var(--primary), var(--secondary))'
-            }}
-          >
-            <i className="ri-book-open-line text-xl text-white"></i>
-          </div>
+      <div className="p-6 border-b backdrop-blur-xl" style={{ borderColor: 'var(--border-secondary)' }}>
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 
-              className="text-xl font-bold"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {t('title')}
-            </h1>
-            <p 
-              className="text-sm"
-              style={{ color: 'var(--text-secondary)' }}
-            >
+            <h2 className="text-2xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+              <span className="text-3xl">📚</span>
+              {t('wordbook.title')}
+            </h2>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
               {stats.total}{t('common.words')}
             </p>
           </div>
@@ -167,16 +168,13 @@ export default function WordbookSidebar({
 
         {/* Search */}
         <div className="relative mb-4">
-          <i 
-            className="ri-search-line absolute left-3 top-1/2 transform -translate-y-1/2"
-            style={{ color: 'var(--text-tertiary)' }}
-          ></i>
+          <i className="ri-search-line absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }}></i>
           <input
+            placeholder={t('wordbook.search.placeholder')}
+            className="w-full pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 transition-all"
             type="text"
-            placeholder={t('common.wordSearch')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 transition-all"
             style={{
               backgroundColor: 'var(--surface-secondary)',
               borderColor: 'var(--border-secondary)',
@@ -198,9 +196,8 @@ export default function WordbookSidebar({
             }}
           >
             <i className="ri-book-line"></i>
-            {t('quiz.words')}
+            {t('wordbook.words')}
           </button>
-          
           <button
             onClick={() => onViewChange('quiz-history')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
@@ -212,12 +209,12 @@ export default function WordbookSidebar({
             }}
           >
             <i className="ri-trophy-line"></i>
-            {t('quiz.quizHistory')}
+            {t('nav.quiz')}
           </button>
         </div>
 
         {/* Action Button */}
-        <button
+        <button 
           onClick={onQuizStart}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 mb-4"
           style={{
@@ -225,136 +222,199 @@ export default function WordbookSidebar({
           }}
         >
           <i className="ri-play-circle-line"></i>
-          {t('quiz.newQuiz')}
+          {t('quiz.actions.newQuiz')}
         </button>
       </div>
 
-      {/* Categories - Only show for words view */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-        {activeView === 'words' && categoryGroups.map((group) => (
-          <div key={group.title}>
-            <h3 
-              className="text-sm font-semibold mb-3 px-2"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {group.title}
-            </h3>
+        {/* Words View */}
+        {activeView === 'words' && (
+          <>
+            {categoryGroups.map((group) => (
+              <div key={group.title} className="space-y-3">
+                <h3 
+                  className="text-sm font-semibold px-2"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {group.title}
+                </h3>
+                <div className="space-y-2">
+                  {group.items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => onCategoryChange(item.id)}
+                      className={`w-full p-3 rounded-xl border-l-4 transition-all duration-200 hover:shadow-lg ${
+                        selectedCategory === item.id ? 'shadow-md scale-105' : ''
+                      }`}
+                      style={{
+                        backgroundColor: selectedCategory === item.id ? 'var(--surface-secondary)' : 'var(--surface-primary)',
+                        borderColor: selectedCategory === item.id ? item.color : 'var(--border-secondary)'
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold"
+                            style={{ background: item.gradient }}
+                          >
+                            <i className={item.icon}></i>
+                          </div>
+                          <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                            {item.label}
+                          </span>
+                        </div>
+                        <span 
+                          className="px-2 py-1 rounded-full text-xs font-medium"
+                          style={{
+                            backgroundColor: `${item.color}20`,
+                            color: item.color
+                          }}
+                        >
+                          {item.count}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+        
+        {/* Quiz History View */}
+        {activeView === 'quiz-history' && (
+          <div>
+            <div className="flex items-center justify-between mb-3 px-2">
+              <h3 
+                className="text-sm font-semibold"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                🏆 {t('quiz.history')}
+              </h3>
+              <button
+                onClick={() => router.push('/quiz/history')}
+                className="px-2 py-1 rounded-lg text-xs font-medium hover:shadow-md transition-all"
+                style={{
+                  backgroundColor: 'var(--primary)20',
+                  color: 'var(--primary)'
+                }}
+              >
+                {t('common.viewAll')}
+              </button>
+            </div>
             
             <div className="space-y-2">
-              {group.items.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onCategoryChange(item.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 hover:shadow-lg ${
-                    selectedCategory === item.id ? 'shadow-lg scale-105' : 'hover:scale-102'
-                  }`}
-                  style={{
-                    backgroundColor: selectedCategory === item.id 
-                      ? `${item.color}15` 
-                      : 'var(--surface-secondary)',
-                    border: selectedCategory === item.id 
-                      ? `2px solid ${item.color}` 
-                      : '2px solid transparent'
-                  }}
-                >
-                  <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold"
-                    style={{ background: item.gradient }}
-                  >
-                    <i className={`${item.icon} text-lg`}></i>
-                  </div>
-                  
-                  <div className="flex-1 text-left">
+              {/* 전체 퀴즈 */}
+              <div 
+                onClick={() => onQuizStatusChange?.('ALL')}
+                className={`p-3 rounded-xl border-l-4 transition-all duration-200 hover:shadow-lg cursor-pointer ${
+                  safeSelectedQuizStatus === 'ALL' ? 'ring-2 ring-offset-2' : ''
+                }`}
+                style={{
+                  backgroundColor: safeSelectedQuizStatus === 'ALL' ? 'var(--surface-primary)' : 'var(--surface-secondary)',
+                  borderColor: 'var(--primary)'
+                }}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-3">
                     <div 
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold"
+                      style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))' }}
+                    >
+                      <i className="ri-apps-line"></i>
+                    </div>
+                    <span 
                       className="font-medium text-sm"
                       style={{ color: 'var(--text-primary)' }}
                     >
-                      {item.label}
-                    </div>
-                    <div 
-                      className="text-xs"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      {item.count}개 단어
-                    </div>
+                      {t('quiz.status.all')}
+                    </span>
                   </div>
-                  
-                  <div 
-                    className="text-lg font-bold px-3 py-1 rounded-lg"
+                  <span 
+                    className="px-2 py-1 rounded-full text-xs font-medium"
                     style={{
-                      backgroundColor: selectedCategory === item.id ? item.color : 'var(--surface-primary)',
-                      color: selectedCategory === item.id ? 'white' : item.color
+                      backgroundColor: 'var(--primary)20',
+                      color: 'var(--primary)'
                     }}
                   >
-                    {item.count}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-        
-        {/* Quiz History Filter - Only show for quiz view */}
-        {activeView === 'quiz-history' && (
-          <div>
-            <h3 
-              className="text-sm font-semibold mb-3 px-2"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              🏆 퀴즈 기록
-            </h3>
-            
-            <div className="space-y-2">
-              <div 
-                className="p-4 rounded-xl border-l-4"
-                style={{
-                  backgroundColor: 'var(--info)10',
-                  borderColor: 'var(--info)'
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <i 
-                    className="ri-information-line text-lg"
-                    style={{ color: 'var(--info)' }}
-                  ></i>
-                  <span 
-                    className="font-semibold text-sm"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    퀴즈 통계
+                    {safeQuizStats.total}
                   </span>
-                </div>
-                <div className="space-y-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  <div>• 총 퀴즈 수: 0개</div>
-                  <div>• 완료율: 0%</div>
-                  <div>• 평균 점수: 0점</div>
-                  <div>• 연속 학습: 0일</div>
                 </div>
               </div>
               
+              {/* 진행 중 퀴즈 */}
               <div 
-                className="p-4 rounded-xl border-l-4"
+                onClick={() => onQuizStatusChange?.('PENDING')}
+                className={`p-3 rounded-xl border-l-4 transition-all duration-200 hover:shadow-lg cursor-pointer ${
+                  safeSelectedQuizStatus === 'PENDING' ? 'ring-2 ring-offset-2' : ''
+                }`}
                 style={{
-                  backgroundColor: 'var(--success)10',
+                  backgroundColor: safeSelectedQuizStatus === 'PENDING' ? 'var(--surface-primary)' : 'var(--surface-secondary)',
+                  borderColor: 'var(--warning)'
+                }}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold"
+                      style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                    >
+                      <i className="ri-time-line"></i>
+                    </div>
+                    <span 
+                      className="font-medium text-sm"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {t('quiz.status.pending')}
+                    </span>
+                  </div>
+                  <span 
+                    className="px-2 py-1 rounded-full text-xs font-medium"
+                    style={{
+                      backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                      color: 'var(--warning)'
+                    }}
+                  >
+                    {safeQuizStats.pending}
+                  </span>
+                </div>
+              </div>
+              
+              {/* 완료된 퀴즈 */}
+              <div 
+                onClick={() => onQuizStatusChange?.('SUBMIT')}
+                className={`p-3 rounded-xl border-l-4 transition-all duration-200 hover:shadow-lg cursor-pointer ${
+                  safeSelectedQuizStatus === 'SUBMIT' ? 'ring-2 ring-offset-2' : ''
+                }`}
+                style={{
+                  backgroundColor: safeSelectedQuizStatus === 'SUBMIT' ? 'var(--surface-primary)' : 'var(--surface-secondary)',
                   borderColor: 'var(--success)'
                 }}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <i 
-                    className="ri-trophy-line text-lg"
-                    style={{ color: 'var(--success)' }}
-                  ></i>
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold"
+                      style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                    >
+                      <i className="ri-check-circle-line"></i>
+                    </div>
+                    <span 
+                      className="font-medium text-sm"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {t('quiz.status.submit')}
+                    </span>
+                  </div>
                   <span 
-                    className="font-semibold text-sm"
-                    style={{ color: 'var(--text-primary)' }}
+                    className="px-2 py-1 rounded-full text-xs font-medium"
+                    style={{
+                      backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                      color: 'var(--success)'
+                    }}
                   >
-                    최고 기록
+                    {safeQuizStats.completed}
                   </span>
-                </div>
-                <div className="space-y-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  <div>• 최고 점수: 0점</div>
-                  <div>• 완벽한 퀴즈: 0개</div>
-                  <div>• 가장 어려운 레벨: -</div>
                 </div>
               </div>
             </div>

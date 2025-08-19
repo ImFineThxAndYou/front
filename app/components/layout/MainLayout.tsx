@@ -7,6 +7,7 @@ import { useUIStore } from '../../../lib/stores/ui';
 import { sseManager } from '../../../lib/services/sseManager';
 import { useChat } from '../../../lib/hooks/useChat';
 import { logger } from '../../../lib/utils/logger';
+import { useTranslation } from '../../../lib/hooks/useTranslation';
 import DesktopNav from './DesktopNav';
 import MobileNav from './MobileNav';
 import TopBar from './TopBar';
@@ -17,6 +18,7 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
+  const { t } = useTranslation(['common']);
   // 모든 Hook을 항상 호출
   const { user, isAuthenticated, checkAuth } = useAuthStore();
   const { theme } = useUIStore();
@@ -93,7 +95,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     >
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p style={{ color: 'var(--text-secondary)' }}>인증 상태를 확인하고 있습니다...</p>
+        <p style={{ color: 'var(--text-secondary)' }}>{t('checking_auth')}</p>
       </div>
     </div>
   );
@@ -108,15 +110,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
       }}
     >
       <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">로그인이 필요합니다</h1>
+        <h1 className="text-2xl font-bold mb-4">{t('login_required')}</h1>
         <p style={{ color: 'var(--text-secondary)' }}>
-          이 페이지에 접근하려면 로그인이 필요합니다.
+          {t('access_required')}
         </p>
         <button 
           onClick={handleGoToLogin}
           className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
-          로그인 페이지로 이동
+          {t('go_to_login')}
         </button>
       </div>
     </div>

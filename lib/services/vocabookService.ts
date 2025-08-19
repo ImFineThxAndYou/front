@@ -1,5 +1,48 @@
 import { apiUtils } from '../utils/api';
 
+// 백엔드 API 응답에 맞는 새로운 타입들
+export interface VocabularyWordEntry {
+  word: string;
+  meaning: string;
+  pos: string; // part of speech
+  lang: string;
+  level: string;
+  analyzedAt: string;
+  chatRoomUuid: string;
+  chatMessageId: string[]; // 메시지 ID 배열
+  example: string[]; // 예문 배열
+}
+
+export interface VocabularyApiResponse {
+  content: VocabularyWordEntry[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      empty: boolean;
+      sorted: boolean;
+      unsorted: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  last: boolean;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  size: number;
+  number: number;
+  sort: {
+    empty: boolean;
+    sorted: boolean;
+    unsorted: boolean;
+  };
+  numberOfElements: number;
+  empty: boolean;
+}
+
+// 기존 타입들 (호환성 유지)
 export interface DictionaryWordEntry {
   word: string;
   meaning: string;
@@ -50,8 +93,56 @@ export class VocabookService {
     }
   }
 
-  // 특정 사용자의 전체 단어장 목록 조회
-  static async getVocabulariesByMember(membername: string): Promise<MemberVocabulary[]> {
+  // 특정 사용자의 전체 단어장 목록 조회 (새로운 API 응답 구조)
+  static async getVocabulariesByMember(membername: string): Promise<VocabularyApiResponse> {
+    try {
+      console.log('🔄 [VocabookService] API 요청 시작:', `/api/vocabook/member/${membername}`);
+      const response = await apiUtils.fetchWithAuth(`/api/vocabook/member/${membername}`);
+      console.log('📡 [VocabookService] API 응답 상태:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [VocabookService] API 응답 오류:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+      
+      const data: VocabularyApiResponse = await response.json();
+      console.log('✅ [VocabookService] API 응답 데이터 구조:', {
+        totalElements: data.totalElements,
+        contentLength: data.content?.length,
+        firstWord: data.content?.[0]
+      });
+      console.log('📊 [VocabookService] 받은 단어 개수:', data.content?.length || 0);
+      
+      return data;
+    } catch (error) {
+      console.error('❌ [VocabookService] 사용자 단어장 목록 조회 실패:', error);
+      // 에러 시 빈 응답 구조 반환
+      return {
+        content: [],
+        pageable: {
+          pageNumber: 0,
+          pageSize: 50,
+          sort: { empty: true, sorted: false, unsorted: true },
+          offset: 0,
+          paged: true,
+          unpaged: false
+        },
+        last: true,
+        totalElements: 0,
+        totalPages: 0,
+        first: true,
+        size: 50,
+        number: 0,
+        sort: { empty: true, sorted: false, unsorted: true },
+        numberOfElements: 0,
+        empty: true
+      };
+    }
+  }
+
+  // 기존 메서드 (호환성 유지)
+  static async getVocabulariesByMemberOld(membername: string): Promise<MemberVocabulary[]> {
     try {
       console.log('🔄 API 요청 시작:', `/api/vocabook/member/${membername}`);
       const response = await apiUtils.fetchWithAuth(`/api/vocabook/member/${membername}`);

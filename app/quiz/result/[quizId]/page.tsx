@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { quizService, QuizResult, QuizWord } from '../../../../lib/services/quizService';
 import MainLayout from '../../../components/layout/MainLayout';
 
+
+
 export default function QuizResultPage() {
   const router = useRouter();
   const params = useParams();
