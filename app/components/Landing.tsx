@@ -21,9 +21,8 @@ export default function Landing() {
     try {
       console.log('🔗 Landing: 구글 OAuth 로그인 시작');
       
-      // 실제 구글 OAuth 로그인 리다이렉트
-      const redirectUri = encodeURIComponent(`${window.location.origin}/signup/callback`);
-      const googleAuthUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/oauth2/authorization/google?redirect_uri=${redirectUri}`;
+      // 실제 구글 OAuth 로그인 리다이렉트 (redirect_uri 파라미터 제거)
+      const googleAuthUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/oauth2/authorization/google`;
       
       console.log('🔗 Landing: 구글 OAuth 리다이렉트 URL:', googleAuthUrl);
       console.log('🔗 Landing: 리다이렉트 시작...');
