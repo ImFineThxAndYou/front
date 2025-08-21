@@ -37,11 +37,16 @@ export class WebSocketManager {
           // SockJS에 인증 헤더 추가
           const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:8080';
           const sock = new SockJS(`${wsBaseUrl}/ws-chatroom`, null, {
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            transports: ['websocket', 'xhr-streaming', 'xhr-polling'], // 프로덕션에서 안정적인 전송 방식
+            timeout: 20000, // 연결 타임아웃 설정
           });
           // 연결 시 토큰을 헤더에 추가
           sock.onopen = () => {
             console.log('🔗 SockJS 연결 성공');
+          };
+          sock.onerror = (error) => {
+            console.error('❌ SockJS 연결 오류:', error);
           };
           return sock;
         },
@@ -52,6 +57,10 @@ export class WebSocketManager {
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
+        // 프로덕션 환경에서 연결 안정성 개선
+        connectionTimeout: 20000,
+        // ALB의 idle timeout(60초)보다 짧게 설정
+        heartbeatGracePeriod: 10000,
       });
 
       // 연결 상태 콜백 설정
