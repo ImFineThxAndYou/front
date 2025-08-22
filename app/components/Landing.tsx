@@ -21,9 +21,9 @@ export default function Landing() {
     try {
       console.log('🔗 Landing: 구글 OAuth 로그인 시작');
       
-      // 실제 구글 OAuth 로그인 리다이렉트 (최상위 도메인 사용)
-      const redirectUri = encodeURIComponent(`https://howareu.click/signup/callback`);
-      const googleAuthUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/oauth2/authorization/google?redirect_uri=${redirectUri}`;
+      // 실제 구글 OAuth 로그인 리다이렉트
+      const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI || `${window.location.origin}/signup/callback`;
+      const googleAuthUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/oauth2/authorization/google?redirect_uri=${encodeURIComponent(redirectUri)}`;
       
       console.log('🔗 Landing: 구글 OAuth 리다이렉트 URL:', googleAuthUrl);
       console.log('🔗 Landing: 리다이렉트 시작...');
