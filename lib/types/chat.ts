@@ -102,3 +102,23 @@ export interface WebSocketMessageRequest {
   content: string;
   messageType?: 'TEXT' | 'IMAGE' | 'FILE';
 }
+
+// 번역 관련 타입
+export interface TranslateRequest {
+  q: string;
+  source: string;
+  target: string;
+}
+
+export interface TranslateResponse {
+  translatedText: string;
+}
+
+export interface TranslationCache {
+  [messageId: string]: {
+    [targetLang: string]: {
+      text: string;
+      timestamp: number;
+    };
+  };
+}

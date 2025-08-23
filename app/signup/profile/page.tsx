@@ -86,8 +86,23 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 기존 사용자 정보로 프로필 폼 초기화
+  // OAuth 리다이렉트 시 Access Token 처리 및 기존 사용자 정보로 프로필 폼 초기화
   useEffect(() => {
+    // URL에서 Access Token 확인
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('access_token');
+    
+    if (accessToken) {
+      console.log('🔑 OAuth 리다이렉트: Access Token 발견');
+      authService.setAccessToken(accessToken);
+      
+      // URL에서 토큰 제거 (보안상)
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('access_token');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+    
+    // 기존 사용자 정보로 프로필 폼 초기화
     if (user) {
       setProfile(prev => ({
         ...prev,

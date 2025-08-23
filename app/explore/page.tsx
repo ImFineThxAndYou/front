@@ -165,7 +165,7 @@ export default function ExplorePage() {
                         borderColor: 'var(--border-secondary)'
                       }}
                     >
-                      같은 관심사
+                      AI 추천
                     </button>
                     <button
                       onClick={() => handleSearchModeChange('filter')}
@@ -185,6 +185,7 @@ export default function ExplorePage() {
                     >
                       관심사 필터
                     </button>
+
                   </div>
                   
                   <div className="flex-1">
@@ -198,7 +199,7 @@ export default function ExplorePage() {
                     onClick={handleSearch}
                     className="px-6 py-3 bg-white text-blue-600 rounded-2xl font-semibold hover:bg-blue-50 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                   >
-                    {searchMode === 'peers' ? '같은 관심사 찾기' : '필터 검색'}
+                    {searchMode === 'peers' ? 'AI 추천 받기' : '필터 검색'}
                   </button>
                 </div>
               </div>

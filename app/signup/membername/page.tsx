@@ -14,8 +14,23 @@ export default function MembernamePage() {
   const { user, setUser } = useAuthStore();
   const { t } = useTranslation('auth');
 
-  // 이미 프로필이 완성된 사용자는 홈으로 리다이렉트
+  // OAuth 리다이렉트 시 Access Token 처리 및 이미 프로필이 완성된 사용자 체크
   useEffect(() => {
+    // URL에서 Access Token 확인
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('access_token');
+    
+    if (accessToken) {
+      console.log('🔑 OAuth 리다이렉트: Access Token 발견');
+      authService.setAccessToken(accessToken);
+      
+      // URL에서 토큰 제거 (보안상)
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('access_token');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+    
+    // 이미 프로필이 완성된 사용자는 홈으로 리다이렉트
     if (user?.isProfileComplete) {
       console.log('🔄 MembernamePage: 프로필 완성된 사용자 - 홈으로 리다이렉트');
       router.push('/chat');

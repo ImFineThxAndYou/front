@@ -20,28 +20,36 @@ function LoginSuccessContent() {
         const oauthSuccess = searchParams.get('oauth_success');
         const provider = searchParams.get('provider');
         const profileCompleted = searchParams.get('profile_completed');
+        const accessToken = searchParams.get('access_token');
 
-        console.log('📋 로그인 성공: URL 파라미터', { oauthSuccess, provider, profileCompleted });
+        console.log('📋 로그인 성공: URL 파라미터', { oauthSuccess, provider, profileCompleted, accessToken: accessToken ? accessToken.substring(0, 20) + '...' : '없음' });
 
         if (oauthSuccess === 'true') {
           // OAuth 로그인 성공
           console.log('✅ 로그인 성공: OAuth 로그인 성공:', { provider, profileCompleted });
 
-          // OAuth2 토큰 처리 - 리프래싱으로 Access Token 획득
+          // OAuth2 토큰 처리 - URL의 Access Token 사용
           try {
             console.log('🔄 로그인 성공: OAuth2 토큰 처리 시작');
             
-            // 1. 먼저 리프래싱으로 Access Token 획득
+            // 1. URL에서 받은 Access Token 사용
             const { authService } = await import('@/lib/services/auth');
-            console.log('📞 authService.refreshToken() 호출 시작');
-            const refreshResult = await authService.refreshToken();
-            console.log('📞 authService.refreshToken() 호출 완료:', refreshResult);
-            
-            // 2. Access Token 설정
-            if (refreshResult.accessToken) {
-              authService.setAccessToken(refreshResult.accessToken);
-              setAccessToken(refreshResult.accessToken);
+            if (accessToken) {
+              console.log('🔑 URL에서 Access Token 발견:', accessToken.substring(0, 20) + '...');
+              authService.setAccessToken(accessToken);
+              setAccessToken(accessToken);
               console.log('✅ Access Token 설정 완료');
+            } else {
+              // URL에 토큰이 없으면 리프래싱으로 획득
+              console.log('📞 authService.refreshToken() 호출 시작');
+              const refreshResult = await authService.refreshToken();
+              console.log('📞 authService.refreshToken() 호출 완료:', refreshResult);
+              
+              if (refreshResult.accessToken) {
+                authService.setAccessToken(refreshResult.accessToken);
+                setAccessToken(refreshResult.accessToken);
+                console.log('✅ Access Token 설정 완료 (리프래싱)');
+              }
             }
             
             // 3. 프로필 정보 조회

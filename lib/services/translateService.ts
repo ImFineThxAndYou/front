@@ -24,36 +24,34 @@ class TranslateService {
   private readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간
 
   /**
-   * 기본 번역 (LiberTranslate)
+   * 자동 번역 (LiberTranslate - 언어 자동 감지)
    */
-  async translateBasic(text: string, sourceLang: string, targetLang: string): Promise<string> {
+  async translateAuto(text: string): Promise<string> {
     try {
-      console.log('🔄 기본 번역 요청:', { text, sourceLang, targetLang });
+      console.log('🔄 자동 번역 요청:', { text });
       
-      const response = await apiUtils.fetchWithAuth('/api/chat-trans/basic', {
+      const response = await apiUtils.fetchWithAuth('/api/translate/auto', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          q: text,
-          source: sourceLang,
-          target: targetLang
+          q: text
         }),
       });
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ 번역 API 오류:', response.status, errorText);
-        throw new Error(`Translation API error: ${response.status} - ${errorText}`);
+        console.error('❌ 자동 번역 API 오류:', response.status, errorText);
+        throw new Error(`Auto translation API error: ${response.status} - ${errorText}`);
       }
       
       const data = await response.json();
-      console.log('✅ 기본 번역 성공:', data);
+      console.log('✅ 자동 번역 성공:', data);
       return data.translatedText;
     } catch (error) {
-      console.error('❌ 기본 번역 실패:', error);
-      throw new Error('번역에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      console.error('❌ 자동 번역 실패:', error);
+      throw new Error('자동 번역에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   }
 
@@ -104,37 +102,45 @@ class TranslateService {
   }
 
   /**
-   * 번역 실행 (캐시 우선)
+   * 자동 타겟 언어 결정 (한글 ↔ 영어)
+   */
+  getAutoTargetLanguage(sourceLang: string): string {
+    return sourceLang === 'ko' ? 'en' : 'ko';
+  }
+
+  /**
+   * 번역 실행 (자동 번역 사용)
    */
   async translate(
     messageId: string, 
     text: string, 
-    targetLang: string, 
+    targetLang?: string, 
     useGemini: boolean = false
   ): Promise<string> {
-    console.log('🔄 번역 시작:', { messageId, text: text.substring(0, 50) + '...', targetLang, useGemini });
+    console.log('🔄 번역 시작:', { messageId, text: text.substring(0, 50) + '...', useGemini });
     
-    // 캐시 확인
-    const cached = this.getCachedTranslation(messageId, targetLang);
+    // 캐시 확인 (자동 번역이므로 'auto' 키 사용)
+    const cacheKey = 'auto';
+    const cached = this.getCachedTranslation(messageId, cacheKey);
     if (cached) {
       console.log('✅ 캐시된 번역 사용:', cached);
       return cached;
     }
 
-    // 언어 감지
-    const sourceLang = this.detectLanguage(text);
-    console.log('🔍 언어 감지 결과:', sourceLang);
-    
     // 번역 실행
     let translatedText: string;
     if (useGemini) {
-      translatedText = await this.translateWithGemini(text, sourceLang, targetLang);
+      // Gemini는 여전히 source, target 필요하므로 기존 방식 사용
+      const sourceLang = this.detectLanguage(text);
+      const finalTargetLang = targetLang || this.getAutoTargetLanguage(sourceLang);
+      translatedText = await this.translateWithGemini(text, sourceLang, finalTargetLang);
     } else {
-      translatedText = await this.translateBasic(text, sourceLang, targetLang);
+      // LiberTranslate는 자동 언어 감지 사용
+      translatedText = await this.translateAuto(text);
     }
 
     // 캐시 저장
-    this.cacheTranslation(messageId, targetLang, translatedText);
+    this.cacheTranslation(messageId, cacheKey, translatedText);
     
     console.log('✅ 번역 완료:', translatedText);
     return translatedText;

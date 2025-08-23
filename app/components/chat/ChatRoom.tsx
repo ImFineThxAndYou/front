@@ -10,6 +10,7 @@ import { useAuthStore } from '../../../lib/stores/auth';
 import { useChat } from '../../../lib/hooks/useChat';
 import { useChatStore } from '../../../lib/stores/chat';
 import Avatar from '../ui/Avatar';
+import ChatMessage from './ChatMessage';
 import { formatDistanceToNow } from '../../../lib/utils/dateUtils';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
 
@@ -239,35 +240,19 @@ export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomPro
           const safeKey = message.id || `message-${index}-${message.messageTime}`;
           
           return (
-            <div
+            <ChatMessage
               key={safeKey}
-              className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
-            >
-              <div 
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                  isMyMessage
-                    ? 'bg-purple-600 text-white' 
-                    : 'bg-gray-100 dark:bg-gray-800'
-                }`}
-              >
-                {/* 상대방 메시지의 경우 발신자 이름 표시 */}
-                {!isMyMessage && (
-                  <p className="text-xs font-medium mb-1 text-gray-600 dark:text-gray-300">
-                    {message.senderName || message.sender}
-                  </p>
-                )}
-                <p className="text-sm break-words">{message.content}</p>
-                <p 
-                  className={`text-xs mt-1 ${
-                    isMyMessage
-                      ? 'text-purple-200' 
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}
-                >
-                  {formatDistanceToNow(new Date(message.messageTime), { addSuffix: true })}
-                </p>
-              </div>
-            </div>
+              message={message}
+              isOwn={isMyMessage}
+              showAvatar={!isMyMessage}
+              showTimestamp={true}
+              participant={{
+                id: message.senderId || message.sender,
+                nickname: message.senderName || message.sender,
+                avatar: '',
+                isOnline: true
+              }}
+            />
           );
         })}
         <div ref={messagesEndRef} />

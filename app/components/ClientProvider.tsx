@@ -3,10 +3,14 @@
 
 import { useEffect } from 'react';
 import { useUIStore } from '../../lib/stores/ui';
+import { useAuthInit } from '../../lib/hooks/useAuthInit';
 import i18n from '../../lib/i18n';
 
 export default function ClientProvider({ children }: { children: React.ReactNode }) {
   const { theme, language } = useUIStore();
+  
+  // 인증 초기화
+  useAuthInit();
 
   // 페이지 로드 시 초기 테마 설정 (플리커 방지)
   useEffect(() => {

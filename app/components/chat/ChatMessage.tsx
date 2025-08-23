@@ -80,8 +80,8 @@ export default function ChatMessage({
     return key;
   }, [language]);
 
-  const targetLang = language === 'ko' ? 'en' : 'ko';
-  const translatedText = getTranslation(message.id, targetLang);
+  // 자동 언어 감지로 번역 (사용자가 언어를 지정하지 않음)
+  const translatedText = getTranslation(message.id, 'auto');
   const translating = isTranslating(message.id);
 
   const formatTime = (dateString: string) => {
@@ -107,17 +107,17 @@ export default function ChatMessage({
 
     setTranslating(message.id, true);
     try {
-      console.log('🔄 번역 시작:', { messageId: message.id, content: message.content, targetLang });
+      console.log('🔄 번역 시작:', { messageId: message.id, content: message.content });
       
       const translation = await translateService.translate(
         message.id,
         message.content,
-        targetLang,
+        undefined, // 자동 번역 사용
         useGemini
       );
       
       console.log('✅ 번역 완료:', translation);
-      setTranslation(message.id, targetLang, translation);
+      setTranslation(message.id, 'auto', translation);
       setShowTranslation(true);
       
       showToast({
@@ -127,7 +127,7 @@ export default function ChatMessage({
     } catch (error) {
       console.error('❌ 번역 실패:', error);
       showToast({
-        message: t('toast.translationFailed'),
+        message: '번역에 실패했습니다. 잠시 후 다시 시도해주세요.',
         type: 'error'
       });
     } finally {
@@ -140,17 +140,17 @@ export default function ChatMessage({
     setUseGemini(true);
     setTranslating(message.id, true);
     try {
-      console.log('🔄 AI 재번역 시작:', { messageId: message.id, content: message.content, targetLang });
+      console.log('🔄 AI 재번역 시작:', { messageId: message.id, content: message.content });
       
       const translation = await translateService.translate(
         message.id,
         message.content,
-        targetLang,
+        undefined, // 자동 번역 사용
         true
       );
       
       console.log('✅ AI 재번역 완료:', translation);
-      setTranslation(message.id, targetLang, translation);
+      setTranslation(message.id, 'auto', translation);
       setShowTranslation(true);
       
       showToast({
@@ -160,7 +160,7 @@ export default function ChatMessage({
     } catch (error) {
       console.error('❌ AI 재번역 실패:', error);
       showToast({
-        message: t('toast.retranslationFailed'),
+        message: 'AI 번역에 실패했습니다. 잠시 후 다시 시도해주세요.',
         type: 'error'
       });
     } finally {
@@ -240,7 +240,7 @@ export default function ChatMessage({
             </div>
 
             {/* Translation */}
-            {showTranslation && translatedText && (
+            {showTranslation && (
               <div
                 className="mt-2 px-4 py-2 rounded-2xl border-2 border-dashed"
                 style={{
@@ -283,32 +283,44 @@ export default function ChatMessage({
                     </button>
                   </div>
                 </div>
-                <div className="text-sm">{translatedText}</div>
+                {translatedText ? (
+                  <div className="text-sm">{translatedText}</div>
+                ) : (
+                  <div className="text-sm text-gray-500 italic">
+                    번역 중... 한글 ↔ 영어 자동 번역
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Action Buttons */}
+            {/* Action Buttons - 메시지 옆에 표시 */}
             <div
-              className={`opacity-0 group-hover:opacity-100 absolute top-0 ${
-                isOwn ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'
-              } flex items-center space-x-1 transition-opacity rounded-full border shadow-sm px-2 py-1`}
+              className={`absolute top-1/2 transform -translate-y-1/2 ${
+                isOwn ? '-left-16' : '-right-16'
+              } flex items-center space-x-1 rounded-full border shadow-md px-2 py-1`}
               style={{
                 backgroundColor: 'var(--surface-primary)',
-                borderColor: 'var(--border-primary)',
-                boxShadow: 'var(--shadow-sm)'
+                borderColor: showTranslation ? 'var(--accent-primary)' : 'var(--border-primary)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
               }}
             >
               <button
                 onClick={handleTranslate}
                 disabled={translating}
-                className="p-1 transition-colors cursor-pointer hover:bg-gray-100 rounded"
-                style={{ color: 'var(--text-secondary)' }}
+                className="p-1 transition-colors cursor-pointer hover:bg-blue-50 rounded"
+                style={{ 
+                  color: showTranslation ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  backgroundColor: showTranslation ? 'var(--accent-primary-alpha)' : 'transparent'
+                }}
                 title={showTranslation ? t('hideTranslation') : t('translate')}
               >
                 {translating ? (
-                  <i className="ri-loader-4-line animate-spin text-sm"></i>
+                  <i className="ri-loader-4-line animate-spin text-xs"></i>
                 ) : (
-                  <i className={`ri-translate-2 text-sm ${showTranslation ? 'text-blue-500' : ''}`}></i>
+                  <div className="flex items-center space-x-1">
+                    <i className="ri-translate-2 text-xs"></i>
+                    <span className="text-xs">{showTranslation ? t('hideTranslation') : t('translate')}</span>
+                  </div>
                 )}
               </button>
 
