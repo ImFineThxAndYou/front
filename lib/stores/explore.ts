@@ -21,7 +21,7 @@ export const useExploreStore = create<ExploreStore>((set, get) => ({
   selectedCategories: [],
   searchMode: 'peers',
 
-  // 같은 관심사 유저 조회
+  // AI 추천 유저 조회
   loadPeers: async () => {
     set({ isLoading: true, error: null });
     
@@ -34,10 +34,10 @@ export const useExploreStore = create<ExploreStore>((set, get) => ({
         selectedCategories: []
       });
     } catch (error) {
-      console.error('❌ 같은 관심사 유저 조회 실패:', error);
+      console.error('❌ AI 추천 유저 조회 실패:', error);
       set({ 
         profiles: [],
-        error: '같은 관심사를 가진 사용자를 불러올 수 없습니다.', 
+        error: 'AI 추천 사용자를 불러올 수 없습니다.', 
         isLoading: false 
       });
     }
@@ -64,6 +64,8 @@ export const useExploreStore = create<ExploreStore>((set, get) => ({
       });
     }
   },
+
+
 
   // 선택된 카테고리 설정
   setSelectedCategories: (categories: Category[]) => {
