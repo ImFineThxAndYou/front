@@ -103,12 +103,11 @@ class AuthService {
           console.log('🔄 401 에러 - 토큰 갱신 시도');
           // 인증 오류 시 토큰 갱신 시도
           try {
-            await this.refreshToken();
+            const refreshResult = await this.refreshToken();
             // 토큰 갱신 성공 시 원래 요청 재시도
             const originalRequest = error.config;
-            const token = localStorage.getItem('accessToken');
-            if (token) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
+            if (refreshResult.accessToken) {
+              originalRequest.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
               console.log('🔄 토큰 갱신 후 원래 요청 재시도');
               return this.axios(originalRequest);
             }
@@ -133,6 +132,26 @@ class AuthService {
       localStorage.setItem('accessToken', token);
       console.log('💾 토큰 저장됨:', token.substring(0, 20) + '...');
     }
+  }
+
+  getAccessToken(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('accessToken');
+    }
+    return null;
+  }
+
+  // 페이지 로드 시 토큰 복원
+  restoreToken() {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        this.axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('🔄 토큰 복원됨:', token.substring(0, 20) + '...');
+        return token;
+      }
+    }
+    return null;
   }
 
 
@@ -215,7 +234,17 @@ class AuthService {
     try {
       console.log('🔄 토큰 갱신 시도');
       
-      const response = await this.axios.post('/api/auth/refresh');
+      // 만료된 Access Token 가져오기
+      const expiredToken = localStorage.getItem('accessToken');
+      if (!expiredToken) {
+        throw new Error('만료된 Access Token이 없습니다');
+      }
+      
+      const response = await this.axios.post('/api/auth/refresh', {}, {
+        headers: {
+          'X-Expired-Access-Token': expiredToken
+        }
+      });
       console.log('📡 토큰 갱신 응답:', response.status);
       
       // 응답 헤더에서 Access Token 확인
@@ -223,6 +252,10 @@ class AuthService {
       if (newAccessToken && newAccessToken.startsWith('Bearer ')) {
         const token = newAccessToken.substring(7);
         console.log('✅ Access Token 갱신 성공');
+        
+        // 토큰을 자동으로 저장
+        this.setAccessToken(token);
+        
         return { accessToken: token };
       }
       

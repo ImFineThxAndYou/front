@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { authService } from '../services/auth';
 
 // axios 기본 설정
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
@@ -51,9 +52,9 @@ const refreshToken = async (): Promise<string> => {
     console.log('✅ 인터셉터: 토큰 갱신 성공:', accessToken);
     axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
     
-    // 로컬 스토리지에 토큰 저장
-    localStorage.setItem('accessToken', accessToken);
-    console.log('💾 인터셉터: Access token을 로컬 스토리지에 저장');
+    // auth service를 통해 토큰 저장
+    authService.setAccessToken(accessToken);
+    console.log('💾 인터셉터: Access token을 auth service에 저장');
     
     return accessToken;
   }).finally(() => {
@@ -137,7 +138,7 @@ export default axios;
 export const apiUtils = {
   // Bearer 토큰이 포함된 fetch 요청
   fetchWithAuth: async (url: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('accessToken');
+    const token = authService.getAccessToken();
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -160,7 +161,7 @@ export const apiUtils = {
 
   // SSE 연결용 fetch (헤더 지원)
   fetchSSE: async (url: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('accessToken');
+    const token = authService.getAccessToken();
     const headers = {
       'Accept': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -185,7 +186,7 @@ export const apiUtils = {
 
   // 하트비트 응답 전송
   sendHeartbeat: async () => {
-    const token = localStorage.getItem('accessToken');
+    const token = authService.getAccessToken();
     if (!token) {
       throw new Error('Access token not found');
     }

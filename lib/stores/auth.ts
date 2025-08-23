@@ -188,6 +188,9 @@ export const useAuthStore = create<AuthState>()(
             return false;
           }
 
+          // 토큰을 axios 헤더에 설정
+          authService.setAccessToken(accessToken);
+
           // 토큰이 있으면 프로필 조회로 유효성 확인
           const profile = await authService.getMyProfile();
           if (profile) {

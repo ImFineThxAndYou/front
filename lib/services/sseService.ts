@@ -1,4 +1,5 @@
 import { apiUtils } from '../utils/api';
+import { authService } from './auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
@@ -6,7 +7,7 @@ export class SseService {
   // SSE 연결 구독
   static async subscribe(): Promise<EventSource> {
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = authService.getAccessToken();
       if (!token) {
         throw new Error('Access token not found');
       }

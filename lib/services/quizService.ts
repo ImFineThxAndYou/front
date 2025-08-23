@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { authService } from './auth';
 
 // 환경별 API 베이스 URL 설정
 const getApiBaseUrl = () => {
@@ -86,7 +87,7 @@ class QuizService {
       };
     }
     
-    const token = localStorage.getItem('accessToken');
+    const token = authService.getAccessToken();
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -101,7 +102,7 @@ class QuizService {
       console.error('QuizService API Error:', error);
       if (error.response?.status === 401) {
         // 인증 오류 처리
-        localStorage.removeItem('accessToken');
+        authService.logout();
         window.location.href = '/';
       }
       throw error;

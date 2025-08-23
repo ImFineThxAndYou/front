@@ -1,6 +1,7 @@
 import { Client, Message, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { ChatMessageResponse, CreateChatMessageRequest, ChatEnterDTO } from '../types/chat';
+import { authService } from './auth';
 
 export class WebSocketManager {
   private client: Client | null = null;
@@ -27,7 +28,7 @@ export class WebSocketManager {
 
     try {
       // 인증 토큰 가져오기
-      const token = localStorage.getItem('accessToken');
+      const token = authService.getAccessToken();
       console.log('🔑 WebSocket: 인증 토큰 확인:', token ? '있음' : '없음');
       console.log('🔑 토큰 길이:', token?.length);
       console.log('🔑 토큰 시작 부분:', token?.substring(0, 20) + '...');
