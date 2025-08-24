@@ -70,7 +70,7 @@ export default function Avatar({
     >
       {shouldShowFallback ? (
         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold rounded-2xl">
-          {fallback.charAt(0).toUpperCase()}
+          {fallback && fallback.length > 0 ? fallback.charAt(0).toUpperCase() : '?'}
         </div>
       ) : (
         <>

@@ -1,41 +1,39 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../../lib/stores/auth';
+import { useChatStore } from '../../../lib/stores/chat';
 import { useUIStore } from '../../../lib/stores/ui';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
-import NotificationsPanel from './NotificationsPanel';
-import Avatar from '../ui/Avatar';
-import { useNotification } from '../../../lib/hooks/useNotification';
-import { useChat } from '../../../lib/hooks/useChat';
-import NotificationList from '../ui/NotificationList';
 import Logo from '../Logo';
+import Avatar from '../ui/Avatar';
+import NotificationList from '../ui/NotificationList';
 
 interface TopBarProps {
-  onMenuClick?: () => void;
+  onMenuClick: () => void;
+  sseStatus?: {
+    isConnected: boolean;
+    isConnecting: boolean;
+    connectionError: string | null;
+  };
+  unreadCount?: number;
 }
 
-export default function TopBar({ onMenuClick }: TopBarProps) {
+export default function TopBar({ onMenuClick, sseStatus, unreadCount = 0 }: TopBarProps) {
+  const { t } = useTranslation('common');
   const router = useRouter();
   const { user, logout } = useAuthStore();
-  const { theme, setTheme, language, setLanguage } = useUIStore();
-  const { t } = useTranslation('common');
-  const [showNotifications, setShowNotifications] = useState(false);
+  const { isConnected: isChatConnected, isConnecting: isChatConnecting, connectionError: chatConnectionError } = useChatStore();
+  const { language, setLanguage } = useUIStore();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const { isConnected, isConnecting, connectionError, notifications, unreadCount } = useNotification();
-  const { isConnected: isChatConnected, isConnecting: isChatConnecting, connectionError: chatConnectionError } = useChat();
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
-
-  const toggleLanguage = () => {
-    const newLanguage = language === 'ko' ? 'en' : 'ko';
-    console.log('TopBar - Toggling language from', language, 'to', newLanguage);
-    setLanguage(newLanguage);
-  };
+  // SSE 상태 기본값 설정
+  const isSSEConnected = sseStatus?.isConnected || false;
+  const isSSEConnecting = sseStatus?.isConnecting || false;
+  const sseConnectionError = sseStatus?.connectionError || null;
 
   const handleProfileClick = () => {
     setShowProfileMenu(false);
@@ -47,23 +45,29 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
     router.push('/me?tab=settings');
   };
 
-  // SSE 연결 상태에 따른 아이콘과 색상 결정
-  const getSSEStatusIcon = () => {
-    if (isConnecting || isChatConnecting) {
+  const toggleLanguage = () => {
+    const newLanguage = language === 'ko' ? 'en' : 'ko';
+    console.log('TopBar - Toggling language from', language, 'to', newLanguage);
+    setLanguage(newLanguage);
+  };
+
+  // 연결 상태에 따른 아이콘과 색상 결정
+  const getConnectionStatusIcon = () => {
+    if (isSSEConnecting || isChatConnecting) {
       return {
         icon: 'ri-loader-4-line',
         color: 'text-yellow-500',
         bgColor: 'bg-yellow-500',
         tooltip: '연결 중...'
       };
-    } else if (isConnected && isChatConnected) {
+    } else if (isSSEConnected && isChatConnected) {
       return {
         icon: 'ri-wifi-line',
         color: 'text-green-500',
         bgColor: 'bg-green-500',
         tooltip: '모든 연결됨'
       };
-    } else if (isConnected || isChatConnected) {
+    } else if (isSSEConnected || isChatConnected) {
       return {
         icon: 'ri-wifi-line',
         color: 'text-orange-500',
@@ -75,16 +79,16 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
         icon: 'ri-wifi-off-line',
         color: 'text-red-500',
         bgColor: 'bg-red-500',
-        tooltip: (connectionError || chatConnectionError) || '연결 끊김'
+        tooltip: (sseConnectionError || chatConnectionError) || '연결 끊김'
       };
     }
   };
 
-  const sseStatus = getSSEStatusIcon();
+  const connectionStatus = getConnectionStatusIcon();
 
   return (
     <header 
-      className="backdrop-blur-xl border-b px-8 relative z-50 transition-all duration-300 h-24 flex items-center"
+      className="backdrop-blur-xl border-b px-8 relative z-40 transition-all duration-300 h-24 flex items-center"
       style={{
         backgroundColor: 'var(--surface-primary)',
         borderColor: 'var(--border-primary)',
@@ -133,14 +137,14 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
                 boxShadow: 'var(--shadow-sm)'
               }}
             >
-              <i className={`${sseStatus.icon} ${sseStatus.color} text-lg ${isConnecting ? 'animate-spin' : ''}`}></i>
+              <i className={`${connectionStatus.icon} ${connectionStatus.color} text-lg ${isSSEConnecting || isChatConnecting ? 'animate-spin' : ''}`}></i>
             </div>
             {/* 툴팁 */}
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-              {sseStatus.tooltip}
+              {connectionStatus.tooltip}
             </div>
             {/* 연결 상태 표시점 */}
-            <div className={`absolute -bottom-1 -right-1 w-2 h-2 ${sseStatus.bgColor} rounded-full animate-pulse`}></div>
+            <div className={`absolute -bottom-1 -right-1 w-2 h-2 ${connectionStatus.bgColor} rounded-full animate-pulse`}></div>
           </div>
 
           <div className="relative">
@@ -185,30 +189,6 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
             <span className="text-xs font-bold transition-colors">
               {language === 'ko' ? '한' : 'EN'}
             </span>
-          </button>
-
-          <button
-            onClick={toggleTheme}
-            className="group w-11 h-11 rounded-2xl backdrop-blur-sm flex items-center justify-center transition-all duration-300 cursor-pointer border hover:scale-105 relative overflow-hidden"
-            style={{
-              backgroundColor: 'var(--input-bg)',
-              borderColor: 'var(--border-secondary)',
-              color: 'var(--text-secondary)',
-              boxShadow: 'var(--shadow-sm)'
-            }}
-          >
-            <div className="relative">
-              <i className={`${theme === 'light' ? 'ri-sun-line' : 'ri-moon-line'} transition-all duration-500 text-lg ${theme === 'dark' ? 'rotate-180' : 'rotate-0'}`}></i>
-            </div>
-            {/* 호버 효과 */}
-            <div 
-              className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"
-              style={{
-                background: theme === 'light' 
-                  ? 'var(--gradient-warm)' 
-                  : 'var(--gradient-primary)'
-              }}
-            />
           </button>
 
           <div className="relative">

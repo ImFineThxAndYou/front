@@ -1,7 +1,5 @@
 import { apiUtils } from '../utils/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-
 export interface NotifyDto {
   id: string;
   type: 'CHAT' | 'SYSTEM' | 'CHATREQ';
@@ -31,7 +29,7 @@ class NotificationService {
   async getNotifications(page: number = 0, size: number = 20): Promise<NotificationPage> {
     try {
       const response = await apiUtils.fetchWithAuth(
-        `${API_BASE_URL}/api/notify?page=${page}&size=${size}`
+        `/api/notify?page=${page}&size=${size}`
       );
       
       if (!response.ok) {
@@ -60,7 +58,7 @@ class NotificationService {
   async getUnreadCount(): Promise<number> {
     try {
       const response = await apiUtils.fetchWithAuth(
-        `${API_BASE_URL}/api/notify/unread-count`
+        `/api/notify/unread-count`
       );
       
       if (!response.ok) {
@@ -82,7 +80,7 @@ class NotificationService {
   async markAsRead(notificationId: string): Promise<void> {
     try {
       const response = await apiUtils.fetchWithAuth(
-        `${API_BASE_URL}/api/notify/${notificationId}/read`,
+        `/api/notify/${notificationId}/read`,
         {
           method: 'PATCH'
         }

@@ -4,46 +4,28 @@ import { chatService } from '../services/chatService';
 import { ChatMessage, ChatRoom, ChatRoomSummaryResponse } from '../types/chat';
 import { getCurrentInstant } from '../utils/dateUtils';
 import { useAuthStore } from './auth';
+import { ChatMessageResponse } from '../types/chat';
 
 interface ChatState {
-  // 연결 상태
+  // WebSocket 연결 상태
   isConnected: boolean;
   isConnecting: boolean;
   connectionError: string | null;
-  isLoading: boolean;
   
-  // 채팅방 상태
+  // 현재 채팅방
   currentChatRoom: string | null;
+  
+  // 채팅방 목록
   chatRooms: ChatRoomSummaryResponse[];
-  chatMessages: Map<string, ChatMessage[]>;
   
-  // 메시지 상태
-  unreadCounts: Map<string, number>;
+  // 메시지 저장소 (chatRoomId -> ChatMessage[])
+  messages: Record<string, ChatMessage[]>;
   
-  // 번역 상태
-  translations: Record<string, Record<string, string>>; // messageId -> { targetLang -> translatedText }
-  translatingMessages: Set<string>; // 번역 중인 메시지 ID들
+  // 읽지 않은 메시지 개수
+  unreadCounts: Record<string, number>;
   
-  // 액션
-  connectWebSocket: () => Promise<void>;
-  disconnectWebSocket: () => void;
-  setCurrentChatRoom: (chatRoomId: string | null) => void;
-  joinChatRoom: (chatRoomId: string) => Promise<void>;
-  leaveChatRoom: (chatRoomId: string) => void;
-  sendMessage: (chatRoomId: string, content: string) => Promise<void>;
-  addMessage: (chatRoomId: string, message: ChatMessage) => void;
-  loadMessages: (chatRoomId: string, messages: ChatMessage[]) => void;
-  markAsRead: (chatRoomId: string) => void;
-  setChatRooms: (chatRooms: ChatRoomSummaryResponse[]) => void;
-  setUnreadCount: (chatRoomId: string, count: number) => void;
-  clearConnectionError: () => void;
-  loadChatRooms: () => Promise<void>;
-
-  // 번역 액션
-  setTranslation: (messageId: string, targetLang: string, translatedText: string) => void;
-  setTranslating: (messageId: string, isTranslating: boolean) => void;
-  getTranslation: (messageId: string, targetLang: string) => string | null;
-  isTranslating: (messageId: string) => boolean;
+  // 메시지 핸들러 등록 상태
+  isMessageHandlerRegistered: boolean;
 }
 
 export const useChatStore = create<ChatState>((set, get) => {
@@ -55,6 +37,28 @@ export const useChatStore = create<ChatState>((set, get) => {
       connectionError: error || null 
     });
   });
+
+  const initialState: ChatState = {
+    // WebSocket 연결 상태
+    isConnected: false,
+    isConnecting: false,
+    connectionError: null,
+    
+    // 현재 채팅방
+    currentChatRoom: null,
+    
+    // 채팅방 목록
+    chatRooms: [],
+    
+    // 메시지 저장소 (chatRoomId -> ChatMessage[])
+    messages: {},
+    
+    // 읽지 않은 메시지 개수
+    unreadCounts: {},
+    
+    // 메시지 핸들러 등록 상태
+    isMessageHandlerRegistered: false,
+  };
 
   return {
     // 초기 상태
@@ -71,86 +75,73 @@ export const useChatStore = create<ChatState>((set, get) => {
 
   // WebSocket 연결
   connectWebSocket: async () => {
-    console.log('🚀 chatStore.connectWebSocket() 호출됨');
     const state = get();
-    console.log('🔍 현재 chatStore 상태:', {
-      isConnected: state.isConnected,
-      isConnecting: state.isConnecting,
-      connectionError: state.connectionError
-    });
-    
     if (state.isConnected || state.isConnecting) {
-      console.log('🔍 이미 연결 중이거나 연결됨');
+      console.log('🔍 WebSocket: 이미 연결 중이거나 연결됨');
       return;
     }
 
-    // 연결 시도 중 중복 호출 방지
-    if (state.isConnecting) {
-      console.log('🔍 이미 연결 시도 중, 중복 호출 방지');
-      return;
-    }
-
-    console.log('📝 연결 상태를 isConnecting=true로 설정');
     set({ isConnecting: true, connectionError: null });
 
     try {
-      // 실제 WebSocket 연결 시도
+      // WebSocket 연결 시도
       console.log('🔗 WebSocket 연결 시도...');
       await websocketManager.connect();
-      
-      // WebSocket 메시지 수신 핸들러 등록
-      console.log('🔔 WebSocket 메시지 핸들러 등록...');
-      websocketManager.onMessageReceived((message) => {
-        console.log('🔔 WebSocket 메시지 수신됨:', message);
-        const state = get();
-        const currentUser = useAuthStore.getState().user;
-        
-        // 현재 채팅방의 메시지인지 확인
-        if (state.currentChatRoom === message.chatRoomUuid) {
-          // 내가 보낸 메시지인지 확인 (중복 방지)
-          const isMyMessage = currentUser && (
-            message.senderName === currentUser.nickname ||
-            message.senderName === currentUser.membername
-          );
-          
-          if (isMyMessage) {
-            console.log('📨 내가 보낸 메시지 WebSocket 수신 - 무시됨 (중복 방지):', {
-              senderName: message.senderName,
-              currentUserNickname: currentUser.nickname,
-              currentUserMembername: currentUser.membername
-            });
-            return;
-          }
-          
-          console.log('📨 다른 사용자 메시지 - addMessage 호출');
-          get().addMessage(message.chatRoomUuid, {
-            id: message.id,
-            chatRoomUuid: message.chatRoomUuid,
-            sender: message.senderName,
-            senderId: message.senderId || '',
-            senderName: message.senderName,
-            content: message.content,
-            messageTime: message.messageTime,
-            chatMessageStatus: message.status as 'read' | 'UNREAD'
-          });
-        } else {
-          console.log('📨 다른 채팅방 메시지 - 무시됨:', {
-            currentRoom: state.currentChatRoom,
-            messageRoom: message.chatRoomUuid
-          });
-        }
+      const isActuallyConnected = websocketManager.isConnected();
+      console.log('🔍 WebSocket 연결 후 실제 상태 확인:', isActuallyConnected);
+      if (!isActuallyConnected) {
+        throw new Error('WebSocket 연결이 완료되지 않았습니다.');
+      }
+
+      // 메시지 핸들러 등록 (WebSocket에서 수신된 메시지를 store에 추가)
+      console.log('🔔 useChatStore: 메시지 핸들러 등록 시작');
+      get().registerMessageHandler();
+      console.log('✅ useChatStore: 메시지 핸들러 등록 완료');
+
+      set({ 
+        isConnected: true, 
+        isConnecting: false, 
+        connectionError: null 
       });
-      
-      // 연결 상태는 websocketManager의 콜백으로 관리됨
       console.log('🔗 WebSocket 연결 성공');
     } catch (error) {
       console.error('❌ WebSocket 연결 실패:', error);
       set({ 
         isConnected: false, 
         isConnecting: false,
-        connectionError: 'WebSocket 연결에 실패했습니다.' 
+        connectionError: error instanceof Error ? error.message : '알 수 없는 오류' 
       });
+      throw error;
     }
+  },
+
+  // 메시지 핸들러 등록 (별도 함수로 분리)
+  registerMessageHandler: () => {
+    const state = get();
+    if (state.isMessageHandlerRegistered) {
+      console.log('🔔 useChatStore: 메시지 핸들러가 이미 등록되어 있음');
+      return;
+    }
+
+    console.log('🔔 useChatStore: 메시지 핸들러 등록 시작');
+    websocketManager.onMessageReceived((message: ChatMessage) => {
+      console.log('📨 WebSocket에서 메시지 수신:', message);
+      
+      // store에 메시지 추가
+      get().addMessage(message.chatRoomUuid, message);
+      
+      // 채팅방 목록의 마지막 메시지 업데이트
+      get().updateChatRoomLastMessage(message.chatRoomUuid, message);
+      
+      // 읽지 않은 메시지 개수 업데이트 (자신이 보낸 메시지가 아닌 경우)
+      const currentUser = useAuthStore.getState().user;
+      if (message.senderId !== currentUser?.id?.toString()) {
+        get().updateUnreadCount(message.chatRoomUuid, true);
+      }
+    });
+    
+    set({ isMessageHandlerRegistered: true });
+    console.log('✅ useChatStore: 메시지 핸들러 등록 완료');
   },
 
   // WebSocket 연결 해제
@@ -186,11 +177,51 @@ export const useChatStore = create<ChatState>((set, get) => {
   // 채팅방 입장
   joinChatRoom: async (chatRoomId: string) => {
     const state = get();
+    console.log('🚪 chat.ts joinChatRoom 시작:', chatRoomId);
+    console.log('🔍 현재 상태:', {
+      currentChatRoom: state.currentChatRoom,
+      isConnected: state.isConnected,
+      isConnecting: state.isConnecting
+    });
     
-    // 이미 해당 채팅방에 있는 경우 중복 입장 방지
-    if (state.currentChatRoom === chatRoomId) {
-      console.log('🔍 이미 해당 채팅방에 있음:', chatRoomId);
+    // 실제 구독 상태 확인 (currentChatRoom만으로는 부족함)
+    const isActuallySubscribed = websocketManager.isSubscribedToRoom(chatRoomId);
+    console.log('🔍 실제 구독 상태 확인:', {
+      chatRoomId,
+      currentChatRoom: state.currentChatRoom,
+      isActuallySubscribed,
+      subscribedRooms: websocketManager.getSubscribedRooms()
+    });
+    
+    // 이미 해당 채팅방에 구독되어 있는 경우 중복 입장 방지
+    if (isActuallySubscribed) {
+      console.log('🔍 이미 해당 채팅방에 구독됨:', chatRoomId);
       return;
+    }
+    
+    // currentChatRoom만 설정되어 있고 실제 구독은 안된 경우
+    if (state.currentChatRoom === chatRoomId && !isActuallySubscribed) {
+      console.log('⚠️ currentChatRoom은 설정되어 있지만 실제 구독은 안됨, 구독 진행');
+    }
+
+    // WebSocket이 연결되지 않은 경우 연결 시도
+    if (!websocketManager.isConnected()) {
+      console.log('🔗 WebSocket이 연결되지 않음, 연결 시도...');
+      try {
+        await websocketManager.connect();
+        // 연결 성공 후 상태 업데이트
+        set({ isConnected: true, connectionError: null });
+        console.log('✅ WebSocket 연결 성공');
+      } catch (error) {
+        console.error('❌ WebSocket 연결 실패:', error);
+        set({ 
+          isConnected: false,
+          connectionError: `WebSocket 연결에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}` 
+        });
+        throw error;
+      }
+    } else {
+      console.log('🔗 WebSocket 이미 연결됨');
     }
 
     // 이전 채팅방에서 나가기
@@ -209,8 +240,10 @@ export const useChatStore = create<ChatState>((set, get) => {
     console.log('🔍 currentChatRoom 즉시 설정됨:', chatRoomId);
     
     try {
-      // 채팅방 입장 이벤트 전송 (웹소켓 연결 포함)
+      // 이미 연결된 WebSocket을 통해 채팅방 구독만
+      console.log('🔗 websocketManager.enterChatRoom 호출 시작');
       await websocketManager.enterChatRoom(chatRoomId);
+      console.log('✅ websocketManager.enterChatRoom 완료');
       
       // 연결 상태 업데이트
       set({ 
@@ -226,7 +259,7 @@ export const useChatStore = create<ChatState>((set, get) => {
         currentChatRoom: null, // 실패 시 null로 복원
         isConnected: false,
         isConnecting: false,
-        connectionError: '채팅방 입장에 실패했습니다.' 
+        connectionError: `채팅방 입장에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}` 
       });
       throw error; // 에러를 다시 던져서 호출자가 처리할 수 있도록
     }
@@ -243,24 +276,21 @@ export const useChatStore = create<ChatState>((set, get) => {
     if (state.currentChatRoom === chatRoomId) {
       set({ 
         currentChatRoom: null,
-        isConnected: false 
+        isConnected: false,
+        isConnecting: false,
+        connectionError: null
       });
+      console.log('🚪 채팅방 나가기 완료, 연결 상태 초기화');
     }
-    
-    console.log('🚪 채팅방 나가기:', chatRoomId);
   },
 
-  // 메시지 전송
+  // 메시지 전송 (WebSocket만 사용, 낙관적 업데이트 제거)
   sendMessage: async (chatRoomId: string, content: string) => {
     const state = get();
     
     if (!state.isConnected) {
-      set({ connectionError: 'WebSocket이 연결되지 않았습니다.' });
-      return;
-    }
-
-    if (!content.trim()) {
-      return;
+      console.error('❌ "WebSocket이 연결되지 않았습니다."');
+      throw new Error('WebSocket이 연결되지 않았습니다.');
     }
 
     try {
@@ -269,114 +299,62 @@ export const useChatStore = create<ChatState>((set, get) => {
       const currentUser = authState.user;
       const senderName = currentUser?.nickname || currentUser?.membername || 'Unknown User';
       
-      // WebSocket으로 메시지 전송
+      // WebSocket으로 메시지 전송만 (화면에는 표시 안함)
       websocketManager.sendMessage(chatRoomId, content);
-      
-      // 낙관적 업데이트 (즉시 UI에 반영)
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2, 15);
-      const optimisticMessage: ChatMessage = {
-        id: `temp-${timestamp}-${randomId}-${currentUser?.id || 'unknown'}`, // 더욱 고유한 임시 ID
-        chatRoomUuid: chatRoomId,
-        sender: senderName,
-        senderId: currentUser?.id?.toString() || '',
-        senderName: senderName,
-        content: content,
-        messageTime: getCurrentInstant(),
-        chatMessageStatus: 'UNREAD'
-      };
-      
-      console.log('📤 낙관적 업데이트 메시지:', optimisticMessage);
-      get().addMessage(chatRoomId, optimisticMessage);
+      console.log('📤 WebSocket으로 메시지 전송됨:', content);
       
     } catch (error) {
       console.error('❌ 메시지 전송 실패:', error);
-      set({ connectionError: '메시지 전송에 실패했습니다.' });
+      set({ connectionError: `메시지 전송 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}` });
+      throw error;
     }
   },
 
-  // 메시지 추가
+  // 메시지 추가 (WebSocket에서 수신된 메시지만)
   addMessage: (chatRoomId: string, message: ChatMessage) => {
-    console.log('🔍 addMessage 호출됨:', { chatRoomId, messageId: message.id, content: message.content });
-    
-    // 메시지 데이터 검증
-    if (!message.id) {
-      console.error('❌ 메시지 ID가 없음:', message);
-      return;
-    }
-    
     const state = get();
     const currentMessages = state.chatMessages.get(chatRoomId) || [];
-    console.log('🔍 현재 메시지 개수:', currentMessages.length);
     
-    // 더 강화된 중복 메시지 방지 - ID와 내용+시간 조합으로 체크
-    const isDuplicate = currentMessages.some(m => 
-      m.id === message.id || 
-      (m.content === message.content && 
-       m.messageTime === message.messageTime && 
-       m.sender === message.sender)
-    );
+    // 중복 체크: ID 기준으로 유니크한 메시지만 추가
+    const isDuplicate = currentMessages.some(m => m.id === message.id);
     
     if (isDuplicate) {
-      console.log('⚠️ 중복 메시지 감지 - 추가하지 않음:', { 
-        id: message.id, 
-        content: message.content.substring(0, 20),
-        sender: message.sender,
-        time: message.messageTime
-      });
+      console.log('🔍 중복 메시지 무시:', message.id);
       return;
     }
     
+    // 새 메시지 추가
     const updatedMessages = [...currentMessages, message];
+    
+    // 시간순으로 정렬
+    const sortedMessages = updatedMessages.sort((a, b) => 
+      new Date(a.messageTime).getTime() - new Date(b.messageTime).getTime()
+    );
+    
     const updatedChatMessages = new Map(state.chatMessages);
-    updatedChatMessages.set(chatRoomId, updatedMessages);
+    updatedChatMessages.set(chatRoomId, sortedMessages);
     
-    console.log('📝 스토어 업데이트 전 메시지 개수:', currentMessages.length);
-    console.log('📝 스토어 업데이트 후 메시지 개수:', updatedMessages.length);
     set({ chatMessages: updatedChatMessages });
-    
-    console.log('✅ addMessage 완료, 새로운 메시지 추가됨');
-    
-    // 스토어 상태 재확인
-    setTimeout(() => {
-      const newState = get();
-      const newMessages = newState.chatMessages.get(chatRoomId) || [];
-      console.log('🔍 addMessage 후 스토어 확인:', { 
-        roomId: chatRoomId,
-        messageCount: newMessages.length,
-        lastMessage: newMessages[newMessages.length - 1]?.content 
-      });
-    }, 100);
-    
-    // 읽지 않은 메시지 개수 업데이트
-    if (message.chatMessageStatus === 'UNREAD' && message.sender !== 'currentUser') {
-      const currentCount = state.unreadCounts.get(chatRoomId) || 0;
-      const updatedUnreadCounts = new Map(state.unreadCounts);
-      updatedUnreadCounts.set(chatRoomId, currentCount + 1);
-      set({ unreadCounts: updatedUnreadCounts });
-    }
+    console.log('✅ 메시지 추가 완료:', { chatRoomId, messageId: message.id, totalCount: sortedMessages.length });
   },
 
   // 여러 메시지 로드 (이전 메시지 기록)
   loadMessages: (chatRoomId: string, messages: ChatMessage[]) => {
-    console.log('🔍 loadMessages 호출됨:', { chatRoomId, messageCount: messages.length });
-    const state = get();
-    console.log('🔍 현재 스토어 상태:', { 
-      chatMessagesSize: state.chatMessages.size,
-      currentRoomMessages: state.chatMessages.get(chatRoomId)?.length || 0
-    });
+    console.log('🔍 chat.ts loadMessages 호출됨:', { chatRoomId, messageCount: messages.length });
     
+    const state = get();
+    const currentMessages = state.chatMessages.get(chatRoomId) || [];
     const updatedChatMessages = new Map(state.chatMessages);
     
+    // 기존 메시지와 새로 로드된 메시지 합치기
+    const allMessages = [...currentMessages, ...messages];
+    
     // 중복 제거: ID 기준으로 유니크한 메시지만 필터링
-    const uniqueMessages = messages.filter((message, index, array) => {
+    const uniqueMessages = allMessages.filter((message, index, array) => {
       // ID가 유니크한지 확인
       const firstIndex = array.findIndex(m => m.id === message.id);
       if (firstIndex !== index) {
-        console.log('⚠️ loadMessages에서 중복 ID 감지:', { 
-          id: message.id, 
-          content: message.content.substring(0, 20) 
-        });
+        console.log('🔍 ID 중복 제거:', message.id);
         return false;
       }
       
@@ -384,16 +362,26 @@ export const useChatStore = create<ChatState>((set, get) => {
       const duplicateByContent = array.findIndex(m => 
         m.content === message.content && 
         m.messageTime === message.messageTime && 
-        m.sender === message.sender
+        m.senderName === message.senderName
       );
       
       if (duplicateByContent !== index) {
-        console.log('⚠️ loadMessages에서 내용 기반 중복 감지:', { 
-          content: message.content.substring(0, 20),
-          sender: message.sender,
-          time: message.messageTime
-        });
+        console.log('🔍 내용 중복 제거:', message.content);
         return false;
+      }
+      
+      // 임시 메시지와 실제 메시지 중복 체크
+      if (message.isSending) {
+        const hasRealMessage = array.some(m => 
+          !m.isSending && 
+          m.content === message.content && 
+          m.senderId === message.senderId &&
+          Math.abs(new Date(m.messageTime).getTime() - new Date(message.messageTime).getTime()) < 1000 // 1초 이내
+        );
+        if (hasRealMessage) {
+          console.log('🔍 임시 메시지 제거 (실제 메시지 존재):', message.content);
+          return false;
+        }
       }
       
       return true;
@@ -404,15 +392,15 @@ export const useChatStore = create<ChatState>((set, get) => {
       new Date(a.messageTime).getTime() - new Date(b.messageTime).getTime()
     );
     
-    console.log('🔄 정렬된 유니크 메시지들:', sortedMessages.map(m => ({ id: m.id, content: m.content, time: m.messageTime })));
-    
     updatedChatMessages.set(chatRoomId, sortedMessages);
     set({ chatMessages: updatedChatMessages });
     
-    console.log(`📝 ${chatRoomId}에 ${uniqueMessages.length}개 유니크 메시지 로드됨 (원본: ${messages.length}개)`);
-    console.log('🔍 스토어 업데이트 후:', { 
-      newSize: updatedChatMessages.size,
-      newRoomMessages: updatedChatMessages.get(chatRoomId)?.length || 0
+    console.log('✅ chat.ts loadMessages 완료:', { 
+      chatRoomId, 
+      originalCount: messages.length, 
+      uniqueCount: uniqueMessages.length, 
+      finalCount: sortedMessages.length,
+      storeSize: updatedChatMessages.size
     });
   },
 
@@ -453,6 +441,81 @@ export const useChatStore = create<ChatState>((set, get) => {
       console.error('❌ 채팅방 목록 로드 실패:', error);
       set({ chatRooms: [], isLoading: false });
     }
+  },
+
+  // 채팅방 마지막 메시지 업데이트
+  updateChatRoomLastMessage: (chatRoomId: string, message: ChatMessage) => {
+    const state = get();
+    const currentChatRooms = state.chatRooms;
+    const updatedChatRooms = currentChatRooms.map(room => {
+      if (room.chatRoomId === chatRoomId || room.chatRoomId === message.chatRoomUuid) {
+        return {
+          ...room,
+          lastMessageContent: message.content,
+          lastMessageTime: message.messageTime
+        };
+      }
+      return room;
+    });
+    set({ chatRooms: updatedChatRooms });
+  },
+
+  // 읽지 않은 메시지 수 업데이트
+  updateUnreadCount: (chatRoomId: string, increment: boolean) => {
+    const state = get();
+    
+    // unreadCounts Map 업데이트
+    const currentUnreadCounts = state.unreadCounts;
+    const currentCount = currentUnreadCounts.get(chatRoomId) || 0;
+    const updatedCount = increment ? currentCount + 1 : Math.max(0, currentCount - 1);
+    const updatedUnreadCounts = new Map(currentUnreadCounts);
+    updatedUnreadCounts.set(chatRoomId, updatedCount);
+    
+    // chatRooms 배열의 unreadCount도 업데이트
+    const updatedChatRooms = state.chatRooms.map(room => {
+      if (room.chatRoomId === chatRoomId) {
+        return {
+          ...room,
+          unreadCount: updatedCount
+        };
+      }
+      return room;
+    });
+    
+    set({ 
+      unreadCounts: updatedUnreadCounts,
+      chatRooms: updatedChatRooms
+    });
+    
+    // 새 메시지 알림 (커스텀 이벤트)
+    if (increment) {
+      const room = state.chatRooms.find(r => r.chatRoomId === chatRoomId);
+      const lastMessage = state.chatMessages.get(chatRoomId)?.slice(-1)[0];
+      if (room && lastMessage) {
+        const event = new CustomEvent('newMessage', {
+          detail: {
+            chatRoomId,
+            opponentName: room.opponentName,
+            content: lastMessage.content
+          }
+        });
+        window.dispatchEvent(event);
+      }
+    }
+  },
+
+  // 현재 채팅방의 메시지들 가져오기
+  getCurrentMessages: () => {
+    const state = get();
+    if (!state.currentChatRoom) return [];
+    return state.chatMessages.get(state.currentChatRoom) || [];
+  },
+
+  // 현재 채팅방의 읽지 않은 메시지 개수
+  getCurrentUnreadCount: () => {
+    const state = get();
+    if (!state.currentChatRoom) return 0;
+    return state.unreadCounts.get(state.currentChatRoom) || 0;
   },
 
   // 번역 액션
