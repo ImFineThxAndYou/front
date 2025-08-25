@@ -62,7 +62,7 @@ class TranslateService {
     try {
       console.log('🔄 Gemini 번역 요청:', { text, sourceLang, targetLang });
       
-      const response = await apiUtils.fetchWithAuth('/api/chat-trans/gemini', {
+      const response = await apiUtils.fetchWithAuth('/api/translate/specific', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +120,8 @@ class TranslateService {
     console.log('🔄 번역 시작:', { messageId, text: text.substring(0, 50) + '...', useGemini });
     
     // 캐시 확인 (자동 번역이므로 'auto' 키 사용)
-    const cacheKey = 'auto';
+    // const cacheKey = 'auto';
+    const cacheKey = useGemini ? 'gemini' : 'auto';
     const cached = this.getCachedTranslation(messageId, cacheKey);
     if (cached) {
       console.log('✅ 캐시된 번역 사용:', cached);
