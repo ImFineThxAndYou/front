@@ -64,7 +64,7 @@ export default function DesktopNav({ onExpandChange }: DesktopNavProps) {
 
       return (
       <nav 
-        className="hidden lg:flex flex-col backdrop-blur-xl border-r h-screen"
+        className="hidden lg:flex flex-col backdrop-blur-xl border-r h-screen fixed left-0 top-0 z-30"
         style={{
           width: shouldShowExpanded ? '288px' : '80px',
           transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -72,9 +72,9 @@ export default function DesktopNav({ onExpandChange }: DesktopNavProps) {
           borderColor: 'var(--border-primary)',
           boxShadow: 'var(--shadow-md)'
         }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
       {/* 로고 영역 - 고정된 높이 */}
       <div className="h-24 flex items-center border-b px-8" style={{ borderColor: 'var(--border-primary)' }}>
         <div className="flex items-center w-full">

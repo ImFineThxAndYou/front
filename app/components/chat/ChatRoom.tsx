@@ -1,58 +1,184 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  ChatMessageDocumentResponse
-} from '../../../lib/types/chat';
-import { chatService } from '../../../lib/services/chatService';
-import { useAuthStore } from '../../../lib/stores/auth';
-import { useChat } from '../../../lib/hooks/useChat';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useChatStore } from '../../../lib/stores/chat';
-import Avatar from '../ui/Avatar';
+import { useAuthStore } from '../../../lib/stores/auth';
+import { chatService } from '../../../lib/services/chatService';
 import ChatMessage from './ChatMessage';
-import { formatDistanceToNow } from '../../../lib/utils/dateUtils';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
 
-interface ChatRoomProps {
+export default function ChatRoom({ roomUuid, opponentName, roomStatus, onBack }: {
   roomUuid: string;
   opponentName: string;
+  roomStatus: string; // 채팅방 상태 추가
   onBack: () => void;
-}
-
-export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomProps) {
+}) {
+  const { t } = useTranslation('chat');
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [sendError, setSendError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
   const { user } = useAuthStore();
   const { 
-    isConnected, 
+    currentChatRoom,
     isConnecting,
-    connectionError,
+    connectWebSocket,
+    sendMessage,
+    loadMessages,
     joinChatRoom,
     leaveChatRoom,
-    sendMessage,
-    currentMessages
-  } = useChat();
-  const { loadMessages } = useChatStore();
-  const { t } = useTranslation('chat');
+    disconnectWebSocket,
+    setCurrentChatRoom,
+    updateUnreadCount,
+    getCurrentMessages
+  } = useChatStore();
 
-  // 메시지 스크롤을 맨 아래로
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // 현재 채팅방의 메시지들
+  const currentMessages = getCurrentMessages();
 
+  // 메시지 렌더링 최적화 (단순화)
+  const memoizedMessages = useMemo(() => {
+    if (!currentMessages) return [];
+    
+    // 시간순으로 정렬만 수행 (중복 제거는 백엔드에서 처리)
+    return currentMessages.sort((a, b) => 
+      new Date(a.messageTime).getTime() - new Date(b.messageTime).getTime()
+    );
+  }, [currentMessages]);
 
+  // 채팅방 상태 확인 (단순화)
+  const isPending = roomStatus === 'PENDING';
+  const isAccepted = roomStatus === 'ACCEPTED';
+
+  // WebSocket 상태 단순화 (복잡한 enum 제거)
+  const [isConnected, setIsConnected] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  // 디버깅: 사용자 정보 로깅 (간단하게)
+  useEffect(() => {
+    console.log('👤 사용자 정보:', {
+      userId: user?.id,
+      nickname: user?.nickname,
+      roomUuid,
+      opponentName
+    });
+  }, [user, roomUuid, opponentName]);
+
+  // 디버깅: 메시지 상태 로깅 (간단하게)
+  useEffect(() => {
+    if (currentMessages && currentMessages.length > 0) {
+      console.log('📥 메시지:', { count: currentMessages.length, roomUuid });
+    }
+  }, [currentMessages, roomUuid]);
+
+  // 채팅방 입장 시 한 번만 실행되는 플래그
+  const hasEnteredRef = useRef(false);
+
+  // 연결 및 구독 함수 (단순화)
+  const connectAndSubscribe = useCallback(async () => {
+    if (!roomUuid || !user) {
+      console.log('❌ 연결 조건 불충족');
+      return;
+    }
+
+    try {
+      console.log('🔗 연결 시작:', roomUuid);
+      
+      // WebSocket 연결
+      await connectWebSocket();
+      setIsConnected(true);
+      console.log('✅ WebSocket 연결됨');
+      
+      // 채팅방 구독
+      await joinChatRoom(roomUuid);
+      setIsSubscribed(true);
+      console.log('✅ 방 구독됨');
+      
+      // 읽음 표시
+      await updateUnreadCount(roomUuid, false);
+      
+    } catch (error) {
+      console.error('❌ 연결 실패:', error);
+      setIsConnected(false);
+      setIsSubscribed(false);
+      
+      // 3초 후 재시도
+      setTimeout(() => {
+        if (roomUuid && user) {
+          connectAndSubscribe();
+        }
+      }, 3000);
+    }
+  }, [roomUuid, user, connectWebSocket, joinChatRoom, updateUnreadCount]);
+
+  // 채팅방 입장 함수 (단순화)
+  const enterChatRoom = useCallback(async () => {
+    if (!roomUuid || !user || hasEnteredRef.current) {
+      return;
+    }
+    
+    try {
+      hasEnteredRef.current = true;
+      setLoading(true);
+      
+      if (isAccepted) {
+        await connectAndSubscribe();
+      } else {
+        console.log('⏳ PENDING 상태, 연결 안함');
+      }
+      
+    } catch (error) {
+      console.error('❌ 입장 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [roomUuid, user, isAccepted, connectAndSubscribe]);
+
+  // 채팅방 입장 시 한 번만 실행
+  useEffect(() => {
+    if (roomUuid && user && isAccepted && !hasEnteredRef.current) {
+      enterChatRoom();
+    }
+  }, [roomUuid, user, isAccepted, enterChatRoom]);
+
+  // 메시지 핸들러 등록 (단순화)
+  useEffect(() => {
+    if (roomUuid && user && isAccepted && isConnected && isSubscribed) {
+      const { registerMessageHandler } = useChatStore.getState();
+      registerMessageHandler();
+    }
+  }, [roomUuid, user, isAccepted, isConnected, isSubscribed]);
+
+  // 채팅방 변경 시 입장 플래그 리셋
+  useEffect(() => {
+    hasEnteredRef.current = false;
+    setIsConnected(false);
+    setIsSubscribed(false);
+  }, [roomUuid]);
+
+  // currentChatRoom 설정 (roomUuid와 동기화)
+  useEffect(() => {
+    if (roomUuid && currentChatRoom !== roomUuid) {
+      console.log('🔍 ChatRoom: currentChatRoom 설정:', { from: currentChatRoom, to: roomUuid });
+      setCurrentChatRoom(roomUuid);
+    }
+  }, [roomUuid, currentChatRoom, setCurrentChatRoom]);
+
+  // currentChatRoom 변경 시 메시지 다시 로드
+  useEffect(() => {
+    if (currentChatRoom && currentChatRoom === roomUuid) {
+      console.log('🔍 ChatRoom: currentChatRoom 변경됨, 메시지 상태 확인:', currentChatRoom);
+      const messages = getCurrentMessages();
+      console.log('📥 현재 메시지 개수:', messages.length);
+    }
+  }, [currentChatRoom, roomUuid, getCurrentMessages]);
 
   // 초기 메시지 로드
   useEffect(() => {
-    console.log('🔍 메시지 로드 useEffect 시작:', { roomUuid, user: !!user });
-    
-    if (!roomUuid) {
-      console.log('❌ roomUuid가 없음:', roomUuid);
-      return;
-    }
+    if (!roomUuid || isPending) return;
 
     const loadInitialMessages = async () => {
       try {
@@ -61,7 +187,6 @@ export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomPro
         
         const messageResponses = await chatService.getRecentMessages(roomUuid, 50);
         console.log('📥 메시지 응답:', messageResponses);
-        console.log('📥 응답 타입:', typeof messageResponses, Array.isArray(messageResponses));
         
         if (!Array.isArray(messageResponses)) {
           console.error('❌ 응답이 배열이 아님:', messageResponses);
@@ -69,24 +194,54 @@ export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomPro
         }
         
         // ChatMessageDocumentResponse를 ChatMessage로 변환
-        const chatMessages = messageResponses.map(msg => ({
+        const chatMessages: ChatMessageType[] = messageResponses.map(msg => ({
           id: msg.id,
           chatRoomUuid: msg.chatRoomUuid,
           sender: msg.senderName,
-          senderId: '', // membername 기반이므로 senderId는 빈 문자열
+          senderId: msg.senderId || '',
           senderName: msg.senderName,
           content: msg.content,
           messageTime: msg.messageTime,
           chatMessageStatus: (msg.chatMessageStatus as 'READ' | 'UNREAD') || 'READ'
         }));
         
-        console.log('🔄 변환된 메시지들:', chatMessages);
+        console.log('📥 변환된 메시지들:', chatMessages);
         
-        // 스토어에 로드된 메시지들 저장
-        console.log('💾 스토어에 메시지 저장 시도...');
-        loadMessages(roomUuid, chatMessages);
-        console.log(`✅ ${chatMessages.length}개 이전 메시지 로드 완료`);
+        // 중복 메시지 제거 (임시 메시지와 실제 메시지)
+        const { getCurrentMessages } = useChatStore.getState();
+        const currentMessages = getCurrentMessages();
+        const filteredMessages = chatMessages.filter(newMsg => {
+          // 현재 표시된 메시지와 중복 체크
+          const isDuplicate = currentMessages.some(currentMsg => 
+            currentMsg.id === newMsg.id ||
+            (currentMsg.content === newMsg.content && 
+             currentMsg.senderId === newMsg.senderId &&
+             Math.abs(new Date(currentMsg.messageTime).getTime() - new Date(newMsg.messageTime).getTime()) < 1000) // 1초 이내
+          );
+          
+          if (isDuplicate) {
+            console.log('🔍 중복 메시지 필터링:', newMsg.content);
+            return false;
+          }
+          
+          return true;
+        });
         
+        console.log('🔍 필터링 후 메시지:', { original: chatMessages.length, filtered: filteredMessages.length });
+        
+        // 메시지 로드
+        loadMessages(roomUuid, filteredMessages);
+        
+        // 메시지 로드 후 currentChatRoom 설정 확인 및 강제 설정
+        if (currentChatRoom !== roomUuid) {
+          console.log('🔍 메시지 로드 후 currentChatRoom 강제 설정:', roomUuid);
+          setCurrentChatRoom(roomUuid);
+        }
+        
+        console.log('🔍 ChatRoom: 메시지 로딩 완료 후 상태 확인');
+        console.log('📥 로드된 메시지:', chatMessages);
+        console.log('📥 메시지 개수:', chatMessages.length);
+        console.log('🔍 currentChatRoom 상태:', { current: currentChatRoom, expected: roomUuid });
       } catch (error) {
         console.error('❌ 메시지 로드 실패:', error);
       } finally {
@@ -95,208 +250,301 @@ export default function ChatRoom({ roomUuid, opponentName, onBack }: ChatRoomPro
     };
 
     loadInitialMessages();
-  }, [roomUuid]);
+  }, [roomUuid, isPending, loadMessages]);
 
-  // 채팅방 입장 및 정리 - 안정화된 useEffect
+  // 채팅방 퇴장 시 정리
   useEffect(() => {
-    if (!user || !roomUuid) return;
-
-    console.log('🔗 ChatRoom: 마운트됨, 채팅방 입장:', roomUuid);
-
-    // 채팅방 입장
-    const handleJoinRoom = async () => {
-      try {
-        await joinChatRoom(roomUuid);
-        // 메시지 읽음 처리
-        await chatService.markMessagesAsRead(roomUuid);
-      } catch (error) {
-        console.error('ChatRoom: 채팅방 입장 중 오류:', error);
+    return () => {
+      if (roomUuid && user) {
+        console.log('🚪 ChatRoom: 채팅방 퇴장, WebSocket 연결 해제');
+      leaveChatRoom(roomUuid);
+        disconnectWebSocket();
+        console.log('🔌 ChatRoom: WebSocket 연결 해제 완료');
       }
     };
-
-    handleJoinRoom();
-
-    // 컴포넌트 언마운트 또는 roomUuid 변경 시 정리
-    return () => {
-      console.log('🚪 ChatRoom: 정리, 채팅방 나가기:', roomUuid);
-      leaveChatRoom(roomUuid);
-    };
-  }, [roomUuid, user?.id]); // 안정적인 의존성만 사용
+  }, [roomUuid, user, leaveChatRoom, disconnectWebSocket]);
 
   // 새 메시지가 추가되면 스크롤
   useEffect(() => {
+    if (currentMessages && currentMessages.length > 0) {
+      setTimeout(() => {
     scrollToBottom();
-  }, [currentMessages]);
-
-  const handleSendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !user || sending) {
-      console.warn('ChatRoom: 메시지 전송 조건 미충족');
-      return;
+      }, 0);
     }
+  }, [currentMessages?.length]);
 
-    console.log('📤 ChatRoom: 메시지 전송 시도:', newMessage.trim());
+  // 스크롤 함수
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    try {
-      setSending(true);
-      await sendMessage(newMessage.trim());
-      setNewMessage('');
-      console.log('✅ ChatRoom: 메시지 전송 완료');
-    } catch (error) {
-      console.error('❌ ChatRoom: 메시지 전송 실패:', error);
-    } finally {
-      setSending(false);
-    }
-  }, [newMessage, user, sending, sendMessage]);
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  // 메시지 전송 (WebSocket만 사용, 즉시 표시 안함)
+  const handleKeyPress = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      
+      if (!newMessage.trim()) return;
+
+      try {
+        setSending(true);
+        console.log('📤 메시지 전송:', newMessage);
+        
+        // 단순한 연결 상태 체크
+        if (!isConnected || !isSubscribed) {
+          setSendError('연결이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.');
+          return;
+        }
+        
+        if (!isAccepted) {
+          setSendError('채팅 신청이 수락되지 않았습니다.');
+          return;
+        }
+        
+        // 메시지 내용 저장
+        const messageContent = newMessage.trim();
+        
+        // 입력창 초기화 (전송 전에)
+        setNewMessage('');
+        
+        // WebSocket으로만 전송 (화면에는 표시 안함)
+        await sendMessage(roomUuid, messageContent);
+        console.log('✅ 메시지 전송됨');
+        setSendError(null);
+        
+      } catch (error) {
+        console.error('❌ 전송 실패:', error);
+        setSendError('메시지 전송에 실패했습니다.');
+        // 전송 실패 시 입력창에 메시지 복원
+        setNewMessage(newMessage);
+      } finally {
+        setSending(false);
+      }
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      <div className="h-full flex items-center justify-center">
+        <div className="text-gray-500">채팅방을 불러오는 중...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="h-full flex flex-col bg-white">
       {/* 헤더 */}
-      <div 
-        className="flex items-center justify-between p-4 border-b flex-shrink-0"
-        style={{
-          backgroundColor: 'var(--surface-primary)',
-          borderColor: 'var(--border-primary)',
-        }}
-      >
-        <div className="flex items-center space-x-3">
+      <div className="flex items-center justify-between p-4 border-b bg-white">
           <button
             onClick={onBack}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <i className="ri-arrow-left-line text-lg" />
-          </button>
-          
-          {/* 디버깅용 연결 버튼 */}
-          {!isConnected && (
-            <button
-              onClick={async () => {
-                console.log('🔧 강제 WebSocket 연결 시도');
-                try {
-                  await joinChatRoom(roomUuid);
-                } catch (error) {
-                  console.error('❌ 강제 연결 실패:', error);
-                }
-              }}
-              className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              🔧 {t('connectTryAgain')}
+          className="flex items-center text-gray-600 hover:text-gray-800"
+        >
+          <i className="ri-arrow-left-line text-xl mr-2"></i>
+          <span className="font-medium">
+            {opponentName.includes('@') 
+              ? opponentName 
+              : `${opponentName}@${opponentName.toLowerCase().replace(/\s+/g, '')}`
+            }
+          </span>
             </button>
-          )}
-          
-          <Avatar
-            src={undefined}
-            alt={opponentName}
-            fallback={opponentName}
-            size="sm"
-          />
-          
-          <div>
-            <h3 
-              className="font-medium"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {opponentName}
-            </h3>
             <div className="flex items-center space-x-2">
-              <div 
-                className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`}
-              />
-              <span 
-                className="text-xs"
-                style={{ color: 'var(--text-tertiary)' }}
-              >
-                {isConnected ? t('online') : t('offline')}
+          <div className="flex items-center space-x-2">
+            {/* 연결 상태 */}
+            <div className={`w-2 h-2 rounded-full ${
+              isConnected ? 'bg-green-500' : 'bg-red-500'
+            }`}></div>
+            <span className="text-sm text-gray-500">
+              {isConnected ? '연결됨' : '연결 안됨'}
+            </span>
+            
+            {/* 구독 상태 */}
+            {isConnected && (
+              <>
+                <div className={`w-2 h-2 rounded-full ${
+                  isSubscribed ? 'bg-blue-500' : 'bg-yellow-500'
+                }`}></div>
+                <span className="text-sm text-gray-500">
+                  {isSubscribed ? '구독됨' : '구독 중...'}
               </span>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {currentMessages.length > 0 && console.log('🔍 렌더링할 메시지들:', currentMessages.map(m => ({ id: m.id, hasId: !!m.id, content: m.content })))}
-        {currentMessages.map((message, index) => {
-          // 백엔드 응답에 맞게 senderId 또는 senderName 사용
-          const isMyMessage = message.senderId === user?.id?.toString() || 
-                             message.sender === user?.nickname ||
-                             message.sender === user?.membername;
-          
-          // 안전한 key 생성 (id가 없거나 중복일 경우를 대비)
-          const safeKey = message.id || `message-${index}-${message.messageTime}`;
+        {!memoizedMessages || memoizedMessages.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            {loading ? (
+              <div className="flex flex-col items-center space-y-2">
+                <i className="ri-loader-4-line animate-spin text-2xl"></i>
+                <span>메시지를 불러오는 중...</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center space-y-2">
+                <i className="ri-message-3-line text-2xl text-gray-300"></i>
+                <span>아직 메시지가 없습니다.</span>
+                {isAccepted && (
+                  <span className="text-sm">첫 번째 메시지를 보내보세요!</span>
+                )}
+                {isPending && (
+                  <span className="text-sm">채팅 신청이 수락되면 메시지를 주고받을 수 있습니다.</span>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="text-xs text-gray-400 text-center mb-4">
+              {memoizedMessages.length}개의 메시지
+            </div>
+            {memoizedMessages.map((message) => {
+              // 사용자 구별 로직 강화
+              const isOwn = (() => {
+                console.log('🔍 메시지 분석:', {
+                  messageId: message.id,
+                  messageSenderId: message.senderId,
+                  messageSenderName: message.senderName,
+                  messageSender: message.sender,
+                  currentUserId: user?.id,
+                  currentUserNickname: user?.nickname,
+                  currentUserMembername: user?.membername
+                });
+                
+                // 1. senderId로 비교 (가장 정확)
+                if (message.senderId && user?.id) {
+                  const senderIdMatch = message.senderId === user.id.toString();
+                  console.log('🔍 senderId 비교:', { messageSenderId: message.senderId, currentUserId: user.id, match: senderIdMatch });
+                  if (senderIdMatch) return true;
+                }
+                
+                // 2. senderName으로 비교 (백업)
+                if (message.senderName && user?.nickname) {
+                  const senderNameMatch = message.senderName === user.nickname;
+                  console.log('🔍 senderName 비교:', { messageSenderName: message.senderName, currentUserNickname: user.nickname, match: senderNameMatch });
+                  if (senderNameMatch) return true;
+                }
+                
+                // 3. sender로 비교 (백업)
+                if (message.sender && user?.nickname) {
+                  const senderMatch = message.sender === user.nickname;
+                  console.log('🔍 sender 비교:', { messageSender: message.sender, currentUserNickname: user.nickname, match: senderMatch });
+                  if (senderMatch) return true;
+                }
+                
+                // 4. membername으로도 비교 (백업)
+                if (message.senderName && user?.membername) {
+                  const membernameMatch = message.senderName === user.membername;
+                  console.log('🔍 membername 비교:', { messageSenderName: message.senderName, currentUserMembername: user.membername, match: membernameMatch });
+                  if (membernameMatch) return true;
+                }
+                
+                // 5. 상대방 이름과 비교하여 상대방 메시지인지 확인
+                if (message.senderName === opponentName || message.sender === opponentName) {
+                  console.log('🔍 상대방 메시지 확인:', { messageSender: message.senderName || message.sender, opponentName });
+                  return false;
+                }
+                
+                console.log('🔍 사용자 구별 실패, 기본값 false');
+                return false;
+              })();
+              
+              console.log('🔍 최종 사용자 구별 결과:', {
+                messageId: message.id,
+                messageSender: message.senderName || message.sender,
+                messageSenderId: message.senderId,
+                isOwn,
+                alignment: isOwn ? '오른쪽 (내 메시지)' : '왼쪽 (상대방 메시지)',
+                backgroundColor: isOwn ? '파란색' : '회색'
+              });
           
           return (
             <ChatMessage
-              key={safeKey}
+                  key={message.id}
               message={message}
-              isOwn={isMyMessage}
-              showAvatar={!isMyMessage}
+                  isOwn={isOwn}
+                  showAvatar={true}
               showTimestamp={true}
               participant={{
-                id: message.senderId || message.sender,
-                nickname: message.senderName || message.sender,
+                    id: message.senderId || '',
+                    nickname: (() => {
+                      if (isOwn) {
+                        return user?.nickname || user?.membername || '나';
+                      } else {
+                        // 상대방인 경우 opponentName 사용
+                        return opponentName.includes('@') 
+                          ? opponentName 
+                          : `${opponentName}@${opponentName.toLowerCase().replace(/\s+/g, '')}`;
+                      }
+                    })(),
                 avatar: '',
-                isOnline: true
+                    isOnline: false
               }}
             />
           );
         })}
+          </>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 메시지 입력 */}
-      <div 
-        className="p-4 border-t flex-shrink-0"
-        style={{
-          backgroundColor: 'var(--surface-primary)',
-          borderColor: 'var(--border-primary)',
-        }}
-      >
-        <div className="flex items-end space-x-3">
-          <div className="flex-1">
+      {/* 입력 영역 */}
+      {isAccepted && (
+        <div className="p-4 border-t bg-white">
+          <div className="flex items-end space-x-2">
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={t('messagePlaceholder')}
-              className="w-full px-4 py-3 rounded-2xl resize-none border focus:outline-none focus:ring-2 focus:ring-purple-500 input-enhanced"
-              style={{
-                backgroundColor: 'var(--input-bg)',
-                borderColor: 'var(--input-border)',
-                color: 'var(--text-primary)',
-              }}
+              placeholder="메시지를 입력하세요..."
+              className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={1}
-              maxLength={500}
+              disabled={sending}
             />
+            <button
+              onClick={() => {
+                if (newMessage.trim() && !sending) {
+                  handleKeyPress({ key: 'Enter', preventDefault: () => {} } as React.KeyboardEvent);
+                }
+              }}
+              disabled={!newMessage.trim() || sending}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              {sending ? (
+                <>
+                  <i className="ri-loader-4-line animate-spin"></i>
+                  <span>전송 중...</span>
+                </>
+              ) : (
+                <>
+                  <i className="ri-send-plane-fill"></i>
+                  <span>전송</span>
+                </>
+              )}
+            </button>
           </div>
           
-          <button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim() || sending || !isConnected}
-            className="p-3 rounded-2xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {sending ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-            ) : (
-              <i className="ri-send-plane-fill text-lg" />
-            )}
-          </button>
+          {/* 전송 상태 표시 */}
+          {sendError && (
+            <div className="mt-2 text-red-500 text-sm">{sendError}</div>
+          )}
+          
+          {/* 전송 안내 메시지 */}
+          {!sendError && (
+            <div className="mt-2 text-gray-500 text-sm">
+              {sending ? '메시지를 전송하고 있습니다...' : 'Enter 키로 메시지를 전송할 수 있습니다.'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isPending && (
+        <div className="p-4 border-t bg-gray-50">
+          <div className="text-center text-gray-500">
+            채팅 신청이 대기 중입니다. 상대방이 수락하면 채팅을 시작할 수 있습니다.
         </div>
       </div>
+      )}
     </div>
   );
 }

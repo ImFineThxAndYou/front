@@ -21,8 +21,14 @@ const refreshToken = async (): Promise<string> => {
   isRefreshing = true;
   console.log('🔄 새로운 토큰 갱신 시작...');
   
+  // 만료된 액세스 토큰 가져오기
+  const expiredToken = authService.getAccessToken();
+  
   refreshPromise = axios.post("/api/auth/refresh", null, { 
-    withCredentials: true 
+    withCredentials: true,
+    headers: {
+      ...(expiredToken && { 'Authorization': `Bearer ${expiredToken}` })
+    }
   }).then(response => {
     console.log('🔄 인터셉터: 토큰 갱신 응답 전체:', response);
     console.log('🔄 인터셉터: 토큰 갱신 응답 데이터:', response.data);
@@ -194,19 +200,52 @@ export const apiUtils = {
     const fullUrl = `${API_BASE_URL}/api/notify/heartbeat`;
     console.log('🌐 sendHeartbeat 요청 URL:', fullUrl);
 
-    const response = await fetch(fullUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      credentials: 'include', // 쿠키 포함 설정 추가
-    });
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include', // 쿠키 포함 설정 추가
+      });
 
-    if (!response.ok) {
-      throw new Error(`Heartbeat failed: ${response.status}`);
+      if (response.status === 401) {
+        console.log('🔄 Heartbeat 401 오류 - 토큰 리프레시 시도');
+        try {
+          // 토큰 리프레시
+          const newToken = await refreshToken();
+          console.log('✅ 토큰 리프레시 성공, heartbeat 재시도');
+          
+          // 새로운 토큰으로 heartbeat 재시도
+          const retryResponse = await fetch(fullUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${newToken}`
+            },
+            credentials: 'include',
+          });
+          
+          if (!retryResponse.ok) {
+            throw new Error(`Heartbeat retry failed: ${retryResponse.status}`);
+          }
+          
+          return retryResponse;
+        } catch (refreshError) {
+          console.error('❌ 토큰 리프레시 실패:', refreshError);
+          throw new Error(`Token refresh failed: ${refreshError instanceof Error ? refreshError.message : 'Unknown error'}`);
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(`Heartbeat failed: ${response.status}`);
+      }
+
+      return response;
+    } catch (error) {
+      console.error('❌ Heartbeat 요청 실패:', error);
+      throw error;
     }
-
-    return response;
   }
 };

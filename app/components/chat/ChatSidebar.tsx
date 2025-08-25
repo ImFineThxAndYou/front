@@ -1,51 +1,71 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
+import { useChatStore } from '../../../lib/stores/chat';
 import ChatRoomItem from './ChatRoomItem';
 import ChatRequestList from './ChatRequestList';
 import { ChatRoomSummaryResponse } from '../../../lib/types/chat';
-import { chatService } from '../../../lib/services/chatService';
-
-type ViewMode = 'rooms' | 'requests';
 
 interface ChatSidebarProps {
-  rooms: ChatRoomSummaryResponse[];
-  selectedRoom: ChatRoomSummaryResponse | null;
-  viewMode: ViewMode;
-  onRoomSelect: (room: ChatRoomSummaryResponse) => void;
-  onViewModeChange: (mode: ViewMode) => void;
+  onRoomSelect: (roomUuid: string) => void;
+  selectedRoomUuid?: string;
+  loading?: boolean;
+  viewMode: 'rooms' | 'requests';
+  onViewModeChange: (mode: 'rooms' | 'requests') => void;
   onRequestUpdate: () => void;
-  loading: boolean;
 }
 
-export default function ChatSidebar({ 
-  rooms, 
-  selectedRoom, 
-  viewMode, 
-  onRoomSelect, 
+export default function ChatSidebar({
+  onRoomSelect,
+  selectedRoomUuid,
+  loading = false,
+  viewMode,
   onViewModeChange,
-  onRequestUpdate,
-  loading 
+  onRequestUpdate
 }: ChatSidebarProps) {
   const { t } = useTranslation('chat');
+  const { chatRooms, updateChatRoomLastMessage, updateUnreadCount } = useChatStore();
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
-  // 받은 채팅 요청 개수 로드
+  // 채팅방 목록이 변경될 때마다 pending 요청 수 업데이트
   useEffect(() => {
-    const loadPendingCount = async () => {
-      try {
-        const requests = await chatService.getMyReceivedChatRequests();
-        const pendingCount = requests.filter(req => req.roomStatus === 'PENDING').length;
-        setPendingRequestCount(pendingCount);
-      } catch (error) {
-        console.error('받은 채팅 요청 로드 실패:', error);
-      }
-    };
+    const pendingCount = chatRooms.filter(room => room.roomStatus === 'PENDING').length;
+    setPendingRequestCount(pendingCount);
+  }, [chatRooms]);
 
-    loadPendingCount();
-  }, []);
+  // 채팅방 선택 시 처리
+  const handleRoomSelect = async (roomUuid: string) => {
+    try {
+      // 새 채팅방 선택
+      console.log('🚪 ChatSidebar: 채팅방 선택:', roomUuid);
+      onRoomSelect(roomUuid);
+    } catch (error) {
+      console.error('❌ ChatSidebar: 채팅방 선택 중 오류:', error);
+    }
+  };
+
+  // 실시간 업데이트된 채팅방 목록 사용
+  const displayRooms = chatRooms;
+
+  // 채팅방을 상태별로 정렬: ACCEPTED 먼저, PENDING 나중에
+  const sortedRooms = [...displayRooms].sort((a, b) => {
+    // ACCEPTED 상태를 먼저 표시
+    if (a.roomStatus === 'ACCEPTED' && b.roomStatus !== 'ACCEPTED') return -1;
+    if (a.roomStatus !== 'ACCEPTED' && b.roomStatus === 'ACCEPTED') return 1;
+    
+    // ACCEPTED 상태인 경우 마지막 메시지 시간으로 정렬 (최신순)
+    if (a.roomStatus === 'ACCEPTED' && b.roomStatus === 'ACCEPTED') {
+      if (a.lastMessageTime && b.lastMessageTime) {
+        return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+      }
+      if (a.lastMessageTime) return -1;
+      if (b.lastMessageTime) return 1;
+    }
+    
+    return 0;
+  });
 
   if (loading) {
     return (
@@ -206,7 +226,7 @@ export default function ChatSidebar({
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {viewMode === 'rooms' && (
           <div className="p-2">
-            {rooms.length === 0 ? (
+            {sortedRooms.length === 0 ? (
               <div 
                 className="p-8 text-center rounded-2xl m-4 border"
                 style={{
@@ -226,12 +246,12 @@ export default function ChatSidebar({
               </div>
             ) : (
               <div className="space-y-1">
-                {rooms.map((room) => (
+                {sortedRooms.map((room) => (
                   <ChatRoomItem
                     key={room.chatRoomId}
                     room={room}
-                    isActive={selectedRoom?.chatRoomId === room.chatRoomId}
-                    onClick={() => onRoomSelect(room)}
+                    isActive={selectedRoomUuid === room.chatRoomId}
+                    onClick={() => handleRoomSelect(room.chatRoomId)}
                   />
                 ))}
               </div>
@@ -259,14 +279,31 @@ export default function ChatSidebar({
         >
           <div className="flex items-center">
             <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-            <span>활성 채팅 {rooms.length}개</span>
+            <span>활성 채팅 {sortedRooms.filter(room => room.roomStatus === 'ACCEPTED').length}개</span>
           </div>
           <div className="flex items-center">
-            <i className="ri-notification-line mr-1"></i>
-            <span>새 요청 {pendingRequestCount}개</span>
+            <i className="ri-time-line mr-1"></i>
+            <span>대기중 {sortedRooms.filter(room => room.roomStatus === 'PENDING').length}개</span>
           </div>
         </div>
+        
+        {/* PENDING 상태 안내 */}
+        {sortedRooms.some(room => room.roomStatus === 'PENDING') && (
+          <div 
+            className="mt-2 p-2 rounded-lg text-xs text-center"
+            style={{
+              backgroundColor: 'var(--accent-warning-bg)',
+              color: 'var(--accent-warning)',
+              border: '1px solid var(--accent-warning)'
+            }}
+          >
+            <i className="ri-information-line mr-1"></i>
+            대기중인 채팅방은 상대방이 수락해야 접근할 수 있습니다
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+

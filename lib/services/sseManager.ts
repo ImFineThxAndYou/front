@@ -177,6 +177,23 @@ class SSEManager {
           console.log('✅ 하트비트 응답 전송 성공');
         }).catch(error => {
           console.error('❌ 하트비트 응답 전송 오류:', error);
+          
+          // 토큰 관련 오류인 경우 재연결 시도
+          if (error.message && (
+            error.message.includes('Token refresh failed') || 
+            error.message.includes('Access token not found') ||
+            error.message.includes('401')
+          )) {
+            console.log('🔄 토큰 관련 오류로 인한 SSE 재연결 시도');
+            this.handleDisconnection();
+            // 잠시 후 재연결 시도
+            setTimeout(() => {
+              const currentUser = useNotificationStore.getState().currentUser;
+              if (currentUser) {
+                this.connect(currentUser);
+              }
+            }, 2000);
+          }
         });
       }
       // 다른 이벤트 타입들은 필요에 따라 처리

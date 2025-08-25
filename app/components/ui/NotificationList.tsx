@@ -28,6 +28,43 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
   const { t } = useTranslation(['notification', 'common']);
   const [isMarkingAsRead, setIsMarkingAsRead] = useState<string | null>(null);
 
+  // 알림 패널이 열릴 때 모든 알림을 읽음 처리
+  useEffect(() => {
+    if (isOpen && notifications.length > 0) {
+      const markAllAsRead = async () => {
+        try {
+          console.log('📖 알림 패널 열림 - 모든 알림을 읽음 처리 중...');
+          
+          // 읽지 않은 알림들만 필터링
+          const unreadNotifications = notifications.filter(notification => !notification.readAt);
+          
+          if (unreadNotifications.length > 0) {
+            console.log(`📖 ${unreadNotifications.length}개의 읽지 않은 알림을 읽음 처리 중...`);
+            
+            // 모든 읽지 않은 알림을 병렬로 읽음 처리
+            await Promise.all(
+              unreadNotifications.map(async (notification) => {
+                try {
+                  await markAsRead(notification.id);
+                } catch (error) {
+                  console.error(`❌ 알림 ${notification.id} 읽음 처리 실패:`, error);
+                }
+              })
+            );
+            
+            console.log('✅ 모든 알림 읽음 처리 완료');
+          } else {
+            console.log('📖 읽지 않은 알림이 없습니다.');
+          }
+        } catch (error) {
+          console.error('❌ 전체 알림 읽음 처리 실패:', error);
+        }
+      };
+      
+      markAllAsRead();
+    }
+  }, [isOpen, notifications, markAsRead]);
+
   if (!isOpen) return null;
 
   const handleMarkAsRead = async (notificationId: string) => {
@@ -161,14 +198,19 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
     return (
       <div
         key={notification.id}
-        className={`p-4 border-b transition-all duration-200 cursor-pointer hover:bg-opacity-50 ${
-          isRead ? 'opacity-70' : 'opacity-100'
+        className={`p-4 border-b transition-all duration-200 ${
+          isRead ? 'opacity-70 cursor-default' : 'opacity-100 cursor-pointer'
         }`}
         style={{
           borderColor: 'var(--border-secondary)',
           backgroundColor: isRead ? 'var(--surface-secondary)' : 'var(--surface-primary)'
         }}
-        onClick={() => handleMarkAsRead(notification.id)}
+        onClick={() => {
+          // 읽지 않은 알림만 클릭 가능
+          if (!isRead) {
+            handleMarkAsRead(notification.id);
+          }
+        }}
       >
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
@@ -195,6 +237,16 @@ export default function NotificationList({ isOpen, onClose }: NotificationListPr
                     }}
                   >
                     새
+                  </span>
+                )}
+                {isRead && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                    style={{
+                      backgroundColor: 'var(--surface-tertiary)',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    읽음
                   </span>
                 )}
               </div>

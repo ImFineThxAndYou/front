@@ -242,7 +242,7 @@ class AuthService {
       
       const response = await this.axios.post('/api/auth/refresh', {}, {
         headers: {
-          'X-Expired-Access-Token': expiredToken
+          'Authorization': `Bearer ${expiredToken}`
         }
       });
       console.log('📡 토큰 갱신 응답:', response.status);
