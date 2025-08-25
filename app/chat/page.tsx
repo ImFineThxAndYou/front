@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import MainLayout from '../components/layout/MainLayout';
 import ChatSidebar from '../components/chat/ChatSidebar';
@@ -23,7 +23,8 @@ interface ToastNotification {
   opponentName?: string;
 }
 
-export default function ChatPage() {
+// useSearchParams를 사용하는 컴포넌트를 별도로 분리
+function ChatPageContent() {
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
   const { 
@@ -98,14 +99,10 @@ export default function ChatPage() {
             message: `채팅방 ID ${roomId}를 찾을 수 없습니다.`,
             type: 'warning'
           }]);
-          // URL에서 room 쿼리 파라미터 제거
-          const url = new URL(window.location.href);
-          url.searchParams.delete('room');
-          window.history.replaceState({}, '', url.toString());
         }
       }
     }
-  }, [loading, chatRooms, searchParams, selectedRoom, setCurrentChatRoom]);
+  }, [loading, chatRooms, selectedRoom, searchParams, setCurrentChatRoom]);
 
   // 사용자 인증 시 WebSocket 연결 시도
   useEffect(() => {
@@ -323,5 +320,13 @@ export default function ChatPage() {
         />
       ))}
     </>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ChatPageContent />
+    </Suspense>
   );
 }
