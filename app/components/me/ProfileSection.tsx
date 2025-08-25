@@ -54,6 +54,7 @@ export default function ProfileSection() {
     try {
       await updateProfile({
         ...formData,
+        statusMessage: formData.bio,
         avatarUrl: avatarPreview
       });
       setIsEditing(false);
@@ -68,7 +69,7 @@ export default function ProfileSection() {
     if (user) {
       setFormData({
         nickname: user.nickname || '',
-        bio: user.bio || '',
+        bio: user.statusMessage || '',
         interests: user.interests || [],
         languages: user.languages || [],
         birthDate: user.birthDate || '',
