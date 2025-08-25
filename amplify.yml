@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - npm ci --prefer-offline --no-audit
     build:
       commands:
         - npm run build
@@ -15,3 +15,7 @@ frontend:
     paths:
       - node_modules/**/*
       - .next/cache/**/*
+  # 빌드 성능 최적화
+  buildPath: .next
+  # 메모리 제한 설정
+  memoryLimit: 4096
