@@ -31,13 +31,18 @@ const COUNTRIES = [
 ];
 
 const INTERESTS = [
-  'travel', 'music', 'sports', 'movies', 'books', 'cooking', 
-  'gaming', 'art', 'technology', 'photography', 'fitness', 'nature'
+  'LANGUAGE_LEARNING', 'TRAVEL', 'CULTURE', 'BUSINESS', 'EDUCATION',
+  'TECHNOLOGY', 'SPORTS', 'MUSIC', 'FOOD', 'ART', 'SCIENCE',
+  'HISTORY', 'MOVIES', 'GAMES', 'LITERATURE', 'PHOTOGRAPHY',
+  'NATURE', 'FITNESS', 'FASHION', 'VOLUNTEERING', 'ANIMALS',
+  'CARS', 'DIY', 'FINANCE'
 ];
 
 export default function ProfileSection() {
   const { t } = useTranslation(['me', 'common']);
   const { user, updateProfile } = useAuthStore();
+
+  const [initialInterests, setInitialInterests] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     nickname: '',
@@ -65,6 +70,7 @@ export default function ProfileSection() {
         country: user.country || '',
         region: user.region || ''
       });
+      setInitialInterests(user.interests || []); // 수정 불가 목록
       setAvatarPreview(user.avatarUrl && user.avatarUrl.trim() !== '' ? user.avatarUrl : '');
     }
   }, [user]);
@@ -75,7 +81,8 @@ export default function ProfileSection() {
       await updateProfile({
         ...formData,
         statusMessage: formData.bio,
-        avatarUrl: avatarPreview
+        avatarUrl: avatarPreview,
+        interests: formData.interests
       });
       setIsEditing(false);
     } catch (error) {
@@ -103,12 +110,20 @@ export default function ProfileSection() {
 
   const toggleInterest = (interest: string) => {
     if (!isEditing) return;
-    setFormData(prev => ({
-      ...prev,
-      interests: prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest]
-    }));
+
+    // 기존 서버에서 내려온 건 변경 불가
+    if (initialInterests.includes(interest)) return;
+
+    setFormData(prev => {
+      if (prev.interests.includes(interest)) {
+        // 선택 해제
+        return { ...prev, interests: prev.interests.filter(i => i !== interest) };
+      } else {
+        // 새 선택인데 5개 초과 → 막기
+        if (prev.interests.length >= 5) return prev;
+        return { ...prev, interests: [...prev.interests, interest] };
+      }
+    });
   };
 
   const handleAvatarClick = () => {
@@ -472,40 +487,32 @@ export default function ProfileSection() {
                   {t('profile.interests')}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {INTERESTS.map(interest => (
-                    <button
-                      key={interest}
-                      onClick={() => toggleInterest(interest)}
-                      disabled={!isEditing}
-                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-                        !isEditing ? 'cursor-default' : 'cursor-pointer'
-                      }`}
-                      style={{
-                        backgroundColor: formData.interests.includes(interest)
-                          ? 'var(--accent-primary)'
-                          : 'var(--surface-secondary)',
-                        color: formData.interests.includes(interest)
-                          ? 'var(--text-on-accent)'
-                          : 'var(--text-secondary)'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (isEditing) {
-                          e.currentTarget.style.backgroundColor = formData.interests.includes(interest)
-                            ? 'var(--accent-primary-hover)'
-                            : 'var(--surface-tertiary)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (isEditing) {
-                          e.currentTarget.style.backgroundColor = formData.interests.includes(interest)
-                            ? 'var(--accent-primary)'
-                            : 'var(--surface-secondary)';
-                        }
-                      }}
-                    >
-                      {interest}
-                    </button>
-                  ))}
+                  {INTERESTS.map(interest => {
+                    const isInitial = initialInterests.includes(interest);
+                    const isSelected = formData.interests.includes(interest);
+
+                    return (
+                        <button
+                            key={interest}
+                            onClick={() => toggleInterest(interest)}
+                            disabled={!isEditing || isInitial}  // 기존 선택은 수정 불가
+                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+                                !isEditing ? 'cursor-default' : isInitial ? 'cursor-not-allowed' : 'cursor-pointer'
+                            }`}
+                            style={{
+                              backgroundColor: isSelected
+                                  ? 'var(--accent-primary)'
+                                  : 'var(--surface-secondary)',
+                              color: isSelected
+                                  ? 'var(--text-on-accent)'
+                                  : 'var(--text-secondary)',
+                              opacity: isInitial ? 0.8 : 1   // 기존은 살짝 흐리게
+                            }}
+                        >
+                          {interest} {/* 그대로 보여줌 */}
+                        </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
