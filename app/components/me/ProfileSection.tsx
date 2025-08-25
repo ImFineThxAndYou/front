@@ -6,19 +6,43 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
 import { useAuthStore } from '../../../lib/stores/auth';
 
-const INTERESTS = [
-  'travel', 'music', 'sports', 'movies', 'books', 'cooking', 
-  'gaming', 'art', 'technology', 'photography', 'fitness', 'nature'
+const AVATAR_OPTIONS = [
+  "/avatars/avatar01.png",
+  "/avatars/avatar02.png",
+  "/avatars/avatar03.png",
+  "/avatars/avatar04.png",
+  "/avatars/avatar05.png",
+  "/avatars/avatar06.png",
+  "/avatars/avatar07.png",
+  "/avatars/avatar08.png",
 ];
 
 const COUNTRIES = [
-  'South Korea', 'United States', 'Japan', 'United Kingdom', 
-  'Germany', 'France', 'Canada', 'Australia', 'China', 'Other'
+  { code: "KR", name: "South Korea" },
+  { code: "US", name: "United States" },
+  { code: "JP", name: "Japan" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "DE", name: "Germany" },
+  { code: "FR", name: "France" },
+  { code: "CA", name: "Canada" },
+  { code: "AU", name: "Australia" },
+  { code: "CN", name: "China" },
+  { code: "OT", name: "Other" }
+];
+
+const INTERESTS = [
+  'LANGUAGE_LEARNING', 'TRAVEL', 'CULTURE', 'BUSINESS', 'EDUCATION',
+  'TECHNOLOGY', 'SPORTS', 'MUSIC', 'FOOD', 'ART', 'SCIENCE',
+  'HISTORY', 'MOVIES', 'GAMES', 'LITERATURE', 'PHOTOGRAPHY',
+  'NATURE', 'FITNESS', 'FASHION', 'VOLUNTEERING', 'ANIMALS',
+  'CARS', 'DIY', 'FINANCE'
 ];
 
 export default function ProfileSection() {
   const { t } = useTranslation(['me', 'common']);
   const { user, updateProfile } = useAuthStore();
+
+  const [initialInterests, setInitialInterests] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     nickname: '',
@@ -33,6 +57,7 @@ export default function ProfileSection() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -45,6 +70,7 @@ export default function ProfileSection() {
         country: user.country || '',
         region: user.region || ''
       });
+      setInitialInterests(user.interests || []); // 수정 불가 목록
       setAvatarPreview(user.avatarUrl && user.avatarUrl.trim() !== '' ? user.avatarUrl : '');
     }
   }, [user]);
@@ -54,7 +80,9 @@ export default function ProfileSection() {
     try {
       await updateProfile({
         ...formData,
-        avatarUrl: avatarPreview
+        statusMessage: formData.bio,
+        avatarUrl: avatarPreview,
+        interests: formData.interests
       });
       setIsEditing(false);
     } catch (error) {
@@ -68,7 +96,7 @@ export default function ProfileSection() {
     if (user) {
       setFormData({
         nickname: user.nickname || '',
-        bio: user.bio || '',
+        bio: user.statusMessage || '',
         interests: user.interests || [],
         languages: user.languages || [],
         birthDate: user.birthDate || '',
@@ -82,19 +110,30 @@ export default function ProfileSection() {
 
   const toggleInterest = (interest: string) => {
     if (!isEditing) return;
-    setFormData(prev => ({
-      ...prev,
-      interests: prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest]
-    }));
+
+    // 기존 서버에서 내려온 건 변경 불가
+    if (initialInterests.includes(interest)) return;
+
+    setFormData(prev => {
+      if (prev.interests.includes(interest)) {
+        // 선택 해제
+        return { ...prev, interests: prev.interests.filter(i => i !== interest) };
+      } else {
+        // 새 선택인데 5개 초과 → 막기
+        if (prev.interests.length >= 5) return prev;
+        return { ...prev, interests: [...prev.interests, interest] };
+      }
+    });
   };
 
   const handleAvatarClick = () => {
     if (!isEditing) return;
-    // Mock file upload
-    const newAvatar = `https://readdy.ai/api/search-image?query=professional%20headshot%20portrait%20photo%20clean%20white%20background%20modern%20style%20person&width=400&height=400&seq=avatar${Date.now()}&orientation=squarish`;
-    setAvatarPreview(newAvatar);
+    setShowAvatarPicker(true); // 선택창 열기
+  };
+
+  const handleSelectAvatar = (url: string) => {
+    setAvatarPreview(url);      // 선택한 아바타 적용
+    setShowAvatarPicker(false); // 선택창 닫기
   };
 
   return (
@@ -218,22 +257,40 @@ export default function ProfileSection() {
                   )}
                 </div>
                 {isEditing && (
-                  <button
-                    onClick={handleAvatarClick}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
-                    style={{
-                      backgroundColor: 'var(--accent-primary)',
-                      color: 'var(--text-on-accent)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--accent-primary-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
-                    }}
-                  >
-                    <i className="ri-camera-line w-4 h-4 text-base"></i>
-                  </button>
+                    <>
+                      {/* 카메라 버튼 */}
+                      <button
+                          onClick={handleAvatarClick}
+                          className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                          style={{
+                            backgroundColor: 'var(--accent-primary)',
+                            color: 'var(--text-on-accent)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--accent-primary-hover)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+                          }}
+                      >
+                        <i className="ri-camera-line w-4 h-4 text-base"></i>
+                      </button>
+
+                      {/* 아바타 선택창 */}
+                      {showAvatarPicker && (
+                          <div className="absolute left-1/2 -translate-x-1/2 mt-3 grid grid-cols-4 gap-2 p-3 rounded-lg border shadow-lg bg-white z-20 w-56">
+                            {AVATAR_OPTIONS.map((url) => (
+                                <img
+                                    key={url}
+                                    src={url}
+                                    alt="avatar"
+                                    className="w-12 h-12 rounded-full cursor-pointer hover:scale-110 transition"
+                                    onClick={() => handleSelectAvatar(url)}
+                                />
+                            ))}
+                          </div>
+                      )}
+                    </>
                 )}
               </div>
               
@@ -378,23 +435,24 @@ export default function ProfileSection() {
                     {t('profile.country')}
                   </label>
                   <select
-                    value={formData.country}
-                    onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-                    disabled={!isEditing}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent pr-8"
-                    style={{
-                      borderColor: 'var(--border-primary)',
-                      backgroundColor: isEditing ? 'var(--surface-primary)' : 'var(--surface-secondary)',
-                      color: 'var(--text-primary)'
-                    }}
+                      value={formData.country}
+                      onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                      disabled={!isEditing}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent pr-8"
+                      style={{
+                        borderColor: 'var(--border-primary)',
+                        backgroundColor: isEditing ? 'var(--surface-primary)' : 'var(--surface-secondary)',
+                        color: 'var(--text-primary)'
+                      }}
                   >
-                                          <option value="">{t('profile.selectCountry')}</option>
-                    {COUNTRIES.map(country => (
-                      <option key={country} value={country}>
-                        {country}
-                      </option>
+                    <option value="">{t('profile.selectCountry')}</option>
+                    {COUNTRIES.map(({ code, name }) => (
+                        <option key={code} value={code}>
+                          {name}
+                        </option>
                     ))}
                   </select>
+
                 </div>
                 
                 <div>
@@ -429,40 +487,32 @@ export default function ProfileSection() {
                   {t('profile.interests')}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {INTERESTS.map(interest => (
-                    <button
-                      key={interest}
-                      onClick={() => toggleInterest(interest)}
-                      disabled={!isEditing}
-                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-                        !isEditing ? 'cursor-default' : 'cursor-pointer'
-                      }`}
-                      style={{
-                        backgroundColor: formData.interests.includes(interest)
-                          ? 'var(--accent-primary)'
-                          : 'var(--surface-secondary)',
-                        color: formData.interests.includes(interest)
-                          ? 'var(--text-on-accent)'
-                          : 'var(--text-secondary)'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (isEditing) {
-                          e.currentTarget.style.backgroundColor = formData.interests.includes(interest)
-                            ? 'var(--accent-primary-hover)'
-                            : 'var(--surface-tertiary)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (isEditing) {
-                          e.currentTarget.style.backgroundColor = formData.interests.includes(interest)
-                            ? 'var(--accent-primary)'
-                            : 'var(--surface-secondary)';
-                        }
-                      }}
-                    >
-                      {interest}
-                    </button>
-                  ))}
+                  {INTERESTS.map(interest => {
+                    const isInitial = initialInterests.includes(interest);
+                    const isSelected = formData.interests.includes(interest);
+
+                    return (
+                        <button
+                            key={interest}
+                            onClick={() => toggleInterest(interest)}
+                            disabled={!isEditing || isInitial}  // 기존 선택은 수정 불가
+                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+                                !isEditing ? 'cursor-default' : isInitial ? 'cursor-not-allowed' : 'cursor-pointer'
+                            }`}
+                            style={{
+                              backgroundColor: isSelected
+                                  ? 'var(--accent-primary)'
+                                  : 'var(--surface-secondary)',
+                              color: isSelected
+                                  ? 'var(--text-on-accent)'
+                                  : 'var(--text-secondary)',
+                              opacity: isInitial ? 0.8 : 1   // 기존은 살짝 흐리게
+                            }}
+                        >
+                          {interest} {/* 그대로 보여줌 */}
+                        </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
