@@ -81,7 +81,8 @@ export default function ChatMessage({
   }, [language]);
 
   // 자동 언어 감지로 번역 (사용자가 언어를 지정하지 않음)
-  const translatedText = getTranslation(message.id, 'auto');
+  // const translatedText = getTranslation(message.id, 'auto');
+  const translatedText = getTranslation(message.id, useGemini ? 'gemini' : 'auto');
   const translating = isTranslating(message.id);
 
   const formatTime = (dateString: string) => {
@@ -150,7 +151,7 @@ export default function ChatMessage({
       );
       
       console.log('✅ AI 재번역 완료:', translation);
-      setTranslation(message.id, 'auto', translation);
+      setTranslation(message.id, 'gemini', translation);
       setShowTranslation(true);
       
       showToast({
