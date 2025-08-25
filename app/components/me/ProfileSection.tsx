@@ -6,6 +6,17 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from '../../../lib/hooks/useTranslation';
 import { useAuthStore } from '../../../lib/stores/auth';
 
+const AVATAR_OPTIONS = [
+  "/avatars/avatar01.png",
+  "/avatars/avatar02.png",
+  "/avatars/avatar03.png",
+  "/avatars/avatar04.png",
+  "/avatars/avatar05.png",
+  "/avatars/avatar06.png",
+  "/avatars/avatar07.png",
+  "/avatars/avatar08.png",
+];
+
 const INTERESTS = [
   'travel', 'music', 'sports', 'movies', 'books', 'cooking', 
   'gaming', 'art', 'technology', 'photography', 'fitness', 'nature'
@@ -33,6 +44,7 @@ export default function ProfileSection() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -93,9 +105,12 @@ export default function ProfileSection() {
 
   const handleAvatarClick = () => {
     if (!isEditing) return;
-    // Mock file upload
-    const newAvatar = `https://readdy.ai/api/search-image?query=professional%20headshot%20portrait%20photo%20clean%20white%20background%20modern%20style%20person&width=400&height=400&seq=avatar${Date.now()}&orientation=squarish`;
-    setAvatarPreview(newAvatar);
+    setShowAvatarPicker(true); // 선택창 열기
+  };
+
+  const handleSelectAvatar = (url: string) => {
+    setAvatarPreview(url);      // 선택한 아바타 적용
+    setShowAvatarPicker(false); // 선택창 닫기
   };
 
   return (
@@ -219,22 +234,40 @@ export default function ProfileSection() {
                   )}
                 </div>
                 {isEditing && (
-                  <button
-                    onClick={handleAvatarClick}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
-                    style={{
-                      backgroundColor: 'var(--accent-primary)',
-                      color: 'var(--text-on-accent)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--accent-primary-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
-                    }}
-                  >
-                    <i className="ri-camera-line w-4 h-4 text-base"></i>
-                  </button>
+                    <>
+                      {/* 카메라 버튼 */}
+                      <button
+                          onClick={handleAvatarClick}
+                          className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                          style={{
+                            backgroundColor: 'var(--accent-primary)',
+                            color: 'var(--text-on-accent)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--accent-primary-hover)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+                          }}
+                      >
+                        <i className="ri-camera-line w-4 h-4 text-base"></i>
+                      </button>
+
+                      {/* 아바타 선택창 */}
+                      {showAvatarPicker && (
+                          <div className="absolute left-1/2 -translate-x-1/2 mt-3 grid grid-cols-4 gap-2 p-3 rounded-lg border shadow-lg bg-white z-20 w-56">
+                            {AVATAR_OPTIONS.map((url) => (
+                                <img
+                                    key={url}
+                                    src={url}
+                                    alt="avatar"
+                                    className="w-12 h-12 rounded-full cursor-pointer hover:scale-110 transition"
+                                    onClick={() => handleSelectAvatar(url)}
+                                />
+                            ))}
+                          </div>
+                      )}
+                    </>
                 )}
               </div>
               
