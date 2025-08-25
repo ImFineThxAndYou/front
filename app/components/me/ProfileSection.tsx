@@ -17,14 +17,22 @@ const AVATAR_OPTIONS = [
   "/avatars/avatar08.png",
 ];
 
+const COUNTRIES = [
+  { code: "KR", name: "South Korea" },
+  { code: "US", name: "United States" },
+  { code: "JP", name: "Japan" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "DE", name: "Germany" },
+  { code: "FR", name: "France" },
+  { code: "CA", name: "Canada" },
+  { code: "AU", name: "Australia" },
+  { code: "CN", name: "China" },
+  { code: "OT", name: "Other" }
+];
+
 const INTERESTS = [
   'travel', 'music', 'sports', 'movies', 'books', 'cooking', 
   'gaming', 'art', 'technology', 'photography', 'fitness', 'nature'
-];
-
-const COUNTRIES = [
-  'South Korea', 'United States', 'Japan', 'United Kingdom', 
-  'Germany', 'France', 'Canada', 'Australia', 'China', 'Other'
 ];
 
 export default function ProfileSection() {
@@ -412,23 +420,24 @@ export default function ProfileSection() {
                     {t('profile.country')}
                   </label>
                   <select
-                    value={formData.country}
-                    onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-                    disabled={!isEditing}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent pr-8"
-                    style={{
-                      borderColor: 'var(--border-primary)',
-                      backgroundColor: isEditing ? 'var(--surface-primary)' : 'var(--surface-secondary)',
-                      color: 'var(--text-primary)'
-                    }}
+                      value={formData.country}
+                      onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                      disabled={!isEditing}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent pr-8"
+                      style={{
+                        borderColor: 'var(--border-primary)',
+                        backgroundColor: isEditing ? 'var(--surface-primary)' : 'var(--surface-secondary)',
+                        color: 'var(--text-primary)'
+                      }}
                   >
-                                          <option value="">{t('profile.selectCountry')}</option>
-                    {COUNTRIES.map(country => (
-                      <option key={country} value={country}>
-                        {country}
-                      </option>
+                    <option value="">{t('profile.selectCountry')}</option>
+                    {COUNTRIES.map(({ code, name }) => (
+                        <option key={code} value={code}>
+                          {name}
+                        </option>
                     ))}
                   </select>
+
                 </div>
                 
                 <div>
